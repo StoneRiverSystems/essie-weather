@@ -19,13 +19,13 @@
   color-scheme:light;
   --bg:#eef3f2;--panel:#fff;--line:#dbe5e3;--ink:#10242a;--ink-2:#43595e;--muted:#66797d;
   --accent:#0c8f74;--ok:#1f7a4d;--warn:#b3361f;--watch:#9a6400;--bar:#dbe5e3;
-  --s1:#0c8f74;--s2:#c95f2e;--s3:#3b6fc2;--s4:#a8740a;
+  --s1:#0c8f74;--s2:#c95f2e;--s3:#3b6fc2;--s4:#a8740a;--s5:#7a5ad0;
 }
 @media (prefers-color-scheme:dark){:root{
   color-scheme:dark;
   --bg:#0d1c22;--panel:#13272f;--line:#213d46;--ink:#e8f0ee;--ink-2:#b6c8c6;--muted:#8aa1a1;
   --accent:#1aa085;--ok:#4cc38a;--warn:#ef7b62;--watch:#e0a54a;--bar:#213d46;
-  --s1:#1aa085;--s2:#d96c3c;--s3:#5a8ce0;--s4:#c98500;
+  --s1:#1aa085;--s2:#d96c3c;--s3:#5a8ce0;--s4:#c98500;--s5:#9b80ea;
 }}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden}
@@ -169,13 +169,15 @@ const AREAS=[
   {id:"harrison",  label:"Gulfport",     area:"Harrison County",         stn:"KGPT",lat:30.3674,lon:-89.0928,color:"var(--s1)"},
   {id:"hancock",   label:"Bay St. Louis",area:"Hancock County",          stn:"KHSA",lat:30.3088,lon:-89.3300,color:"var(--s2)"},
   {id:"warren",    label:"Vicksburg",    area:"Warren County",           stn:"KVKS",lat:32.3526,lon:-90.8779,color:"var(--s3)"},
-  {id:"batonrouge",label:"Baton Rouge",  area:"East Baton Rouge Parish", stn:"KBTR",lat:30.4515,lon:-91.1871,color:"var(--s4)"}
+  {id:"batonrouge",label:"Baton Rouge",  area:"East Baton Rouge Parish", stn:"KBTR",lat:30.4515,lon:-91.1871,color:"var(--s4)"},
+  {id:"okmulgee",  label:"Okmulgee",     area:"Okmulgee County, OK",     stn:"KOKM",lat:35.6234,lon:-95.9603,color:"var(--s5)"}
 ];
 // a few towns with an airport weather station, shown as measured-temperature tags on the radar
 const TOWNS=[["Gulfport","KGPT",30.3674,-89.0928],["Biloxi","KBIX",30.396,-88.8853],["Bay St. Louis","KHSA",30.3088,-89.33],["Pascagoula","KPQL",30.3658,-88.5561],
   ["Picayune","KMJD",30.5255,-89.6798],["New Orleans","KMSY",29.9511,-90.0715],["Mobile","KMOB",30.6954,-88.0399],["Hattiesburg","KHBG",31.3271,-89.2903],
-  ["Baton Rouge","KBTR",30.4515,-91.1871],["Vicksburg","KVKS",32.3526,-90.8779],["Jackson","KJAN",32.2988,-90.1848],["McComb","KMCB",31.2438,-90.4532]];
-const STN_NAME={KGPT:"Gulfport-Biloxi Airport",KHSA:"Stennis Airport",KVKS:"Vicksburg Airport",KBTR:"Baton Rouge Airport"};
+  ["Baton Rouge","KBTR",30.4515,-91.1871],["Vicksburg","KVKS",32.3526,-90.8779],["Jackson","KJAN",32.2988,-90.1848],["McComb","KMCB",31.2438,-90.4532],
+  ["Okmulgee","KOKM",35.6234,-95.9603],["Tulsa","KTUL",36.1540,-95.9928],["Muskogee","KMKO",35.6577,-95.3614]];
+const STN_NAME={KGPT:"Gulfport-Biloxi Airport",KHSA:"Stennis Airport",KVKS:"Vicksburg Airport",KBTR:"Baton Rouge Airport",KOKM:"Okmulgee Regional Airport"};
 
 const r=Math.round, $=id=>document.getElementById(id), PHONE=matchMedia("(max-width: 700px)").matches;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
