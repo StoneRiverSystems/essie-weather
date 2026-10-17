@@ -585,15 +585,15 @@ async function showLayer(m){
   if(!map) return;
   clearOverlay();
   const D=LAYERS[m];
-  if(isRadar){ if(base) base.setUrl(baseUrl()); layers.forEach((l,k)=>l.setOpacity(k===frame?0.65:0)); if(playing) play(true); else showFrame(frame); setLegend(D.legend(),D.note); return; }
-  clearTimeout(timer); layers.forEach(l=>l.setOpacity(0));
+  if(isRadar){ if(base) base.setUrl(baseUrl()); if(!radarOn) buildFrames(); layers.forEach((l,k)=>l.setOpacity(k===frame?0.65:0)); if(playing) play(true); else showFrame(frame); setLegend(D.legend(),D.note); return; }
+  dropRadar();
   document.getElementById("rtime").textContent="Now";
   if(m==="sat"){
-    if(!map.getPane("sat")){ map.createPane("sat"); const p=map.getPane("sat"); p.style.zIndex=350; p.style.mixBlendMode="screen"; p.style.pointerEvents="none"; }
+    if(!map.getPane("sat")){ map.createPane("sat"); const p=map.getPane("sat"); p.style.zIndex=350; p.style.pointerEvents="none"; }
     const G="https://gibs.earthdata.nasa.gov/wmts/epsg3857/nrt/", L_=[];
-    ["Himawari_AHI","GOES-West_ABI","GOES-East_ABI"].forEach(sat=>[6,7].forEach(lv=>
+    (PHONE?["GOES-West_ABI","GOES-East_ABI"]:["Himawari_AHI","GOES-West_ABI","GOES-East_ABI"]).forEach(sat=>[6,7].forEach(lv=>
       L_.push(L.tileLayer(`${G}${sat}_Band13_Clean_Infrared_v0_NRT_ZENJPEG/default/GoogleMapsCompatible_Level${lv}/{z}/{y}/{x}.jpg`,
-        {pane:"sat",maxNativeZoom:lv,maxZoom:12,opacity:.85,attribution:"Satellite: NASA GIBS (GOES, Himawari)"}))));
+        {pane:"sat",maxNativeZoom:lv,maxZoom:12,opacity:.6,keepBuffer:0,attribution:"Satellite: NASA GIBS (GOES, Himawari)"}))));
     wms=L.layerGroup(L_).addTo(map);
     if(!isDark()&&base) base.setUrl(`${ESRI}World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`);
     setLegend(D.legend(),D.note); return;
@@ -621,7 +621,9 @@ let moveT=null;
 function onMove(){ clearTimeout(moveT); moveT=setTimeout(()=>{ if(!["radar","lightning","sat"].includes(mode)) showLayer(mode); },350); }
 
 /* ---------- radar: NEXRAD mosaic tiles (IEM), animated ---------- */
-const FRAMES=["m50m","m45m","m40m","m35m","m30m","m25m","m20m","m15m","m10m","m05m",""];
+const PHONE=matchMedia("(max-width: 700px)").matches;
+const FRAMES=PHONE?["m50m","m40m","m30m","m20m","m10m",""]:["m50m","m45m","m40m","m35m","m30m","m25m","m20m","m15m","m10m","m05m",""];
+let radarOn=false;
 let map=null, base=null, ref=null, layers=[], bad=new Set(), frame=FRAMES.length-1, playing=true, timer=null, stamp=Date.now();
 const empty=document.getElementById("radar-empty");
 const isDark=()=>document.documentElement.dataset.theme?document.documentElement.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
@@ -644,7 +646,7 @@ function initMap(){
 }
 function buildFrames(){
   layers.forEach(l=>map.removeLayer(l));
-  stamp=Date.now();
+  stamp=Date.now(); radarOn=true;
   layers=FRAMES.map((f,i)=>L.tileLayer(`https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913${f?"-"+f:""}/{z}/{x}/{y}.png?t=${Math.floor(stamp/300000)}`,
     {opacity:i===frame?0.65:0,zIndex:10+i,attribution:'Radar: NWS NEXRAD via <a href="https://mesonet.agron.iastate.edu/">IEM</a>'}).addTo(map));
   // a frame whose tiles keep failing is skipped; if the latest frame fails, show the error panel
@@ -653,9 +655,10 @@ function buildFrames(){
     l.on("load",()=>{if(k===layers.length-1) empty.style.display="none"});});
   showFrame(frame);
 }
+function dropRadar(){ if(radarOn){ layers.forEach(l=>map.removeLayer(l)); radarOn=false; } clearTimeout(timer); }
 function showFrame(i){
   layers.forEach((l,k)=>l.setOpacity(k===i?0.65:0));
-  const mins=(FRAMES.length-1-i)*5, t=new Date(stamp-mins*60000);
+  const mins=(FRAMES.length-1-i)*(PHONE?10:5), t=new Date(stamp-mins*60000);
   document.getElementById("rtime").textContent=(mins?`${mins} min ago`:"Latest")+" · "+t.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
 }
 function tick(){ if(mode!=="radar") return;
@@ -666,8 +669,8 @@ function play(on){playing=on; clearTimeout(timer); const b=document.getElementBy
 document.getElementById("rplay").addEventListener("click",()=>play(!playing));
 function radar(){
   if(!initMap()) return;
+  if(mode!=="radar"){ dropRadar(); return; }
   buildFrames();
-  if(mode!=="radar"){ showLayer(mode); return; }
   if(matchMedia("(prefers-reduced-motion: reduce)").matches) play(false); else if(playing) play(true);
 }
 function recenter(){ if(map){const [c,z]=view(); map.flyTo(c,z,{duration:.6})} }
