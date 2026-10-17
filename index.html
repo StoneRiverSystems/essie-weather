@@ -19,11 +19,13 @@
   color-scheme:light;
   --bg:#eef3f2;--panel:#fff;--line:#dbe5e3;--ink:#10242a;--ink-2:#43595e;--muted:#66797d;
   --accent:#0c8f74;--ok:#1f7a4d;--warn:#b3361f;--watch:#9a6400;--bar:#dbe5e3;
+  --s1:#0c8f74;--s2:#c95f2e;--s3:#3b6fc2;--s4:#a8740a;
 }
 @media (prefers-color-scheme:dark){:root{
   color-scheme:dark;
   --bg:#0d1c22;--panel:#13272f;--line:#213d46;--ink:#e8f0ee;--ink-2:#b6c8c6;--muted:#8aa1a1;
   --accent:#1aa085;--ok:#4cc38a;--warn:#ef7b62;--watch:#e0a54a;--bar:#213d46;
+  --s1:#1aa085;--s2:#d96c3c;--s3:#5a8ce0;--s4:#c98500;
 }}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden}
@@ -71,7 +73,7 @@ h2{margin:0 0 10px;font-size:15px;font-weight:600;color:var(--ink-2)}
 .maphead h2{margin:0}
 .maphead .t{color:var(--muted);font-size:13px;margin-left:auto}
 .maphead button{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:8px;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer}
-.mapbox{position:relative;height:620px;border-radius:12px;overflow:hidden;background:var(--bg)}
+.mapbox{position:relative;height:480px;border-radius:12px;overflow:hidden;background:var(--bg)}
 #map{position:absolute;inset:0}
 .leaflet-container{font:inherit;background:var(--bg)}
 .leaflet-control-attribution{font-size:10px}
@@ -84,14 +86,42 @@ h2{margin:0 0 10px;font-size:15px;font-weight:600;color:var(--ink-2)}
 footer{color:var(--muted);font-size:12px;margin-top:16px}
 footer a{color:inherit}
 .err{color:var(--warn)}
+.chead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.chead h2{margin:0}
+.key{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin-left:auto}
+.key span{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.key i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.key span.off{opacity:.55}
+#chart{position:relative;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+#chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;top:4px;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.2);white-space:nowrap;opacity:0;transition:opacity .1s}
+.tip b{display:block;margin-bottom:3px}
+.tip div{display:flex;align-items:center;gap:7px;color:var(--ink-2)}
+.tip div i{width:10px;height:3px;border-radius:2px}
+.tip div em{font-style:normal;margin-left:auto;padding-left:14px;color:var(--ink);font-weight:600}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.col>.card+.card{margin-top:0}
 
 @media (max-width:900px){
-  .grid{grid-template-columns:1fr}
-  .mapbox{height:58vh;min-height:340px}
+  .grid{display:flex;flex-direction:column;align-items:stretch;gap:16px}
+  .col{display:contents}
+  #now{order:1}#alertcard{order:2}#chartcard{order:3}.mapcard{order:4}#dayscard{order:5}
+  .card+.card{margin-top:0}
+  .mapbox{height:52vh;min-height:320px}
+}
+/* iPhone (17 Pro is 402 points wide): sticky area bar under the Dynamic Island, big tap targets */
+@media (max-width:700px){
+  header{position:sticky;top:0;z-index:1000;margin:calc(-18px - env(safe-area-inset-top)) calc(-16px - env(safe-area-inset-right)) 14px calc(-16px - env(safe-area-inset-left));
+    padding:calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left));
+    background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+  .areas button{min-height:40px;padding:8px 15px;font-size:15px}
+  .maphead button{min-height:36px;padding:6px 14px}
+  .key{margin-left:0;font-size:13px}
 }
 @media (max-width:520px){
-  h1{width:100%}
-  .areas{width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  h1{width:100%;font-size:18px}
+  .areas{width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .areas::-webkit-scrollbar{display:none}
   .areas button{flex:0 0 auto}
   .card{padding:16px}
@@ -108,16 +138,24 @@ footer a{color:inherit}
   </header>
 
   <div class="grid">
-    <div>
+    <div class="col">
       <section class="card now" id="now" aria-live="polite"><div class="src">Loading…</div></section>
-      <section class="card" aria-label="Weather alerts"><h2>Alerts</h2><div id="alerts"><div class="src">Checking the National Weather Service…</div></div></section>
-      <section class="card" aria-label="7-day forecast"><h2>7-day forecast</h2><ul class="days" id="days"></ul></section>
+      <section class="card" id="alertcard" aria-label="Weather alerts"><h2>Alerts</h2><div id="alerts"><div class="src">Checking the National Weather Service…</div></div></section>
+      <section class="card" id="dayscard" aria-label="7-day forecast"><h2>7-day forecast</h2><ul class="days" id="days"></ul></section>
     </div>
+    <div class="col">
+    <section class="card" id="chartcard" aria-label="Temperature, next 7 days">
+      <div class="chead"><h2>Temperature, next 7 days</h2><div class="key" id="key"></div></div>
+      <div id="chart" role="img" aria-label="Hourly temperature for the next 7 days"></div>
+      <div class="hint" id="hint">Touch and slide across the chart to see each hour.</div>
+    </section>
     <section class="card mapcard" aria-label="Live radar">
       <div class="maphead"><h2>Live radar</h2><span class="t n" id="rtime"></span><button type="button" id="play">Pause</button></div>
       <div class="mapbox"><div id="map"></div><div class="msg" id="mapmsg">The radar couldn't load. It tries again in 5 minutes.</div></div>
       <div class="scale"><span>Light</span><span class="r"></span><span>Heavy rain / storms</span></div>
+      <div class="hint" id="maphint" hidden>Pinch with two fingers to zoom or move the map.</div>
     </section>
+    </div>
   </div>
 
   <footer>
@@ -128,10 +166,10 @@ footer a{color:inherit}
 <script>
 const TZ="America/Chicago";
 const AREAS=[
-  {id:"harrison",  label:"Gulfport",     area:"Harrison County",         stn:"KGPT",lat:30.3674,lon:-89.0928},
-  {id:"hancock",   label:"Bay St. Louis",area:"Hancock County",          stn:"KHSA",lat:30.3088,lon:-89.3300},
-  {id:"warren",    label:"Vicksburg",    area:"Warren County",           stn:"KVKS",lat:32.3526,lon:-90.8779},
-  {id:"batonrouge",label:"Baton Rouge",  area:"East Baton Rouge Parish", stn:"KBTR",lat:30.4515,lon:-91.1871}
+  {id:"harrison",  label:"Gulfport",     area:"Harrison County",         stn:"KGPT",lat:30.3674,lon:-89.0928,color:"var(--s1)"},
+  {id:"hancock",   label:"Bay St. Louis",area:"Hancock County",          stn:"KHSA",lat:30.3088,lon:-89.3300,color:"var(--s2)"},
+  {id:"warren",    label:"Vicksburg",    area:"Warren County",           stn:"KVKS",lat:32.3526,lon:-90.8779,color:"var(--s3)"},
+  {id:"batonrouge",label:"Baton Rouge",  area:"East Baton Rouge Parish", stn:"KBTR",lat:30.4515,lon:-91.1871,color:"var(--s4)"}
 ];
 // a few towns with an airport weather station, shown as measured-temperature tags on the radar
 const TOWNS=[["Gulfport","KGPT",30.3674,-89.0928],["Biloxi","KBIX",30.396,-88.8853],["Bay St. Louis","KHSA",30.3088,-89.33],["Pascagoula","KPQL",30.3658,-88.5561],
@@ -139,7 +177,7 @@ const TOWNS=[["Gulfport","KGPT",30.3674,-89.0928],["Biloxi","KBIX",30.396,-88.88
   ["Baton Rouge","KBTR",30.4515,-91.1871],["Vicksburg","KVKS",32.3526,-90.8779],["Jackson","KJAN",32.2988,-90.1848],["McComb","KMCB",31.2438,-90.4532]];
 const STN_NAME={KGPT:"Gulfport-Biloxi Airport",KHSA:"Stennis Airport",KVKS:"Vicksburg Airport",KBTR:"Baton Rouge Airport"};
 
-const r=Math.round, $=id=>document.getElementById(id);
+const r=Math.round, $=id=>document.getElementById(id), PHONE=matchMedia("(max-width: 700px)").matches;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const time=t=>new Date(t).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
 const WMO=c=>c===0?"Clear":c<=2?"Partly cloudy":c===3?"Cloudy":c<=48?"Fog":c<=55?"Drizzle":c<=65?"Rain":c<=67?"Freezing rain":c<=77?"Snow":c<=82?"Showers":c<=86?"Snow showers":"Storms";
@@ -156,8 +194,42 @@ $("areas").addEventListener("click",e=>{const b=e.target.closest("[data-a]"); if
 
 function render(){
   document.querySelectorAll("[data-a]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.a===sel));
-  renderNow(); renderAlerts(); renderDays();
+  renderNow(); renderAlerts(); renderDays(); drawChart();
 }
+
+/* 7-day hourly temperature chart: all 4 areas, the chosen one drawn on top */
+$("key").innerHTML=AREAS.map(a=>`<span data-k="${a.id}"><i style="background:${a.color}"></i>${a.label}</span>`).join("");
+$("key").addEventListener("click",e=>{const b=e.target.closest("[data-k]"); if(b) $("areas").querySelector(`[data-a="${b.dataset.k}"]`).click();});
+if(!matchMedia("(hover:none)").matches) $("hint").textContent="Move across the chart to see each hour.";
+function drawChart(){
+  document.querySelectorAll("#key [data-k]").forEach(s=>s.classList.toggle("off",s.dataset.k!==sel));
+  if(!FC||!FC[0].hourly) return;
+  const box=$("chart"), W=Math.max(300,box.clientWidth), H=W<500?190:Math.min(260,W*.34), m={t:10,r:8,b:24,l:30};
+  const T=FC[0].hourly.time, n=T.length, S=FC.map(f=>f.hourly.temperature_2m), all=S.flat().filter(v=>v!=null);
+  let lo=Math.floor(Math.min(...all)/5)*5, hi=Math.ceil(Math.max(...all)/5)*5; if(hi-lo<15) hi=lo+15;
+  const step=hi-lo>30?10:5, x=i=>m.l+(W-m.l-m.r)*i/(n-1), y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+  const path=s=>{let d="",pen=false; s.forEach((v,i)=>{if(v==null){pen=false;return} d+=(pen?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1); pen=true}); return d};
+  let g="";
+  for(let v=lo;v<=hi;v+=step) g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${m.l-5}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}°</text>`;
+  T.forEach((t,i)=>{ if(t.endsWith("T12:00")) g+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">${new Date(t).toLocaleDateString("en-US",{weekday:"short"})}</text>`; });
+  const k=AREAS.findIndex(a=>a.id===sel);
+  AREAS.forEach((a,i)=>{ if(i!==k) g+=`<path d="${path(S[i])}" fill="none" stroke="${a.color}" stroke-width="1.4" stroke-opacity=".45" stroke-linejoin="round"/>`; });
+  g+=`<path d="${path(S[k])}" fill="none" stroke="${AREAS[k].color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const now=T.findIndex(t=>new Date(t)>=new Date(Date.now()-30*6e4));
+  if(now>0) g+=`<line x1="${x(now)}" x2="${x(now)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--muted)" stroke-dasharray="2 3"/><text x="${x(now)+4}" y="${m.t+9}" font-size="11" fill="var(--muted)">Now</text>`;
+  g+=`<g id="hv" style="display:none"><line id="hx" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink-2)"/>${AREAS.map((a,i)=>`<circle id="hc${i}" r="${i===k?5:3.5}" fill="${a.color}" stroke="var(--panel)" stroke-width="2"/>`).join("")}</g>`;
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg><div class="tip" id="tip"></div>`;
+  const hv=box.querySelector("#hv"), tip=box.querySelector("#tip");
+  const at=e=>{ const R=box.getBoundingClientRect(), px=(e.clientX-R.left)*(W/R.width), i=Math.max(0,Math.min(n-1,Math.round((px-m.l)/(W-m.l-m.r)*(n-1)))), xi=x(i);
+    hv.style.display=""; box.querySelector("#hx").setAttribute("x1",xi); box.querySelector("#hx").setAttribute("x2",xi);
+    S.forEach((s,j)=>{const c=box.querySelector("#hc"+j); if(s[i]==null){c.style.display="none";return} c.style.display=""; c.setAttribute("cx",xi); c.setAttribute("cy",y(s[i]));});
+    const order=[k,...AREAS.map((_,j)=>j).filter(j=>j!==k)];
+    tip.innerHTML=`<b>${new Date(T[i]).toLocaleString("en-US",{weekday:"short",hour:"numeric"})}</b>`+order.map(j=>`<div><i style="background:${AREAS[j].color}"></i>${AREAS[j].label}<em>${S[j][i]==null?"–":r(S[j][i])+"°"}</em></div>`).join("");
+    tip.style.opacity=1; const tw=tip.offsetWidth, tx=xi*(R.width/W); tip.style.left=(tx+14+tw>R.width?tx-14-tw:tx+14)+"px"; };
+  const off=()=>{hv.style.display="none"; tip.style.opacity=0};
+  box.onpointerdown=e=>{at(e)}; box.onpointermove=e=>{if(e.pointerType==="mouse"||e.buttons) at(e)}; box.onpointerleave=off; box.onpointerup=e=>{if(e.pointerType!=="mouse") setTimeout(off,1500)}; box.onpointercancel=off;
+}
+addEventListener("resize",()=>{clearTimeout(drawChart.t); drawChart.t=setTimeout(drawChart,150)});
 
 /* current conditions: measured at the airport station, weather model only as a backup */
 function renderNow(){
@@ -209,7 +281,7 @@ async function loadForecast(){
   const q=new URLSearchParams({latitude:AREAS.map(a=>a.lat).join(","),longitude:AREAS.map(a=>a.lon).join(","),timezone:TZ,
     temperature_unit:"fahrenheit",wind_speed_unit:"mph",forecast_days:7,
     current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m",
-    daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"});
+    daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",hourly:"temperature_2m"});
   try{ const res=await fetch("https://api.open-meteo.com/v1/forecast?"+q); if(!res.ok) throw 0;
     const j=await res.json(); FC=Array.isArray(j)?j:[j]; render();
   }catch(e){ if(!FC) $("days").innerHTML=`<li class="err">Couldn't load the forecast. Trying again in 15 minutes.</li>`; }
@@ -236,14 +308,13 @@ async function loadAlerts(){
 }
 
 /* radar: one map, NEXRAD loop, measured temperature tags */
-const PHONE=matchMedia("(max-width: 700px)").matches;
 const FRAMES=PHONE?["m40m","m30m","m20m","m10m",""]:["m50m","m40m","m30m","m20m","m10m",""];
 const dark=matchMedia("(prefers-color-scheme: dark)").matches;
 const ESRI="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_"+(dark?"Dark":"Light")+"_Gray_";
 let map=null, frames=[], frame=FRAMES.length-1, playing=true, timer=null, stamp=0, tags=null;
 function initMap(){
   if(typeof L==="undefined"){ $("mapmsg").style.display="flex"; return false; }
-  map=L.map("map",{minZoom:4,maxZoom:11,scrollWheelZoom:true});
+  map=L.map("map",{minZoom:4,maxZoom:11,scrollWheelZoom:true,dragging:!PHONE,tap:false});
   L.tileLayer(ESRI+"Base/MapServer/tile/{z}/{y}/{x}",{maxZoom:11,attribution:"Map: Esri, HERE, Garmin, &copy; OpenStreetMap"}).addTo(map);
   map.createPane("labels"); map.getPane("labels").style.zIndex=450; map.getPane("labels").style.pointerEvents="none";
   L.tileLayer(ESRI+"Reference/MapServer/tile/{z}/{y}/{x}",{maxZoom:11,pane:"labels"}).addTo(map);
@@ -275,6 +346,7 @@ function drawTags(){
 }
 
 if(matchMedia("(prefers-reduced-motion: reduce)").matches) playing=false;
+if(PHONE) $("maphint").hidden=false;
 render(); loadRadar(); loadForecast(); loadObs(); loadAlerts();
 setInterval(loadObs,10*60e3); setInterval(loadAlerts,10*60e3); setInterval(loadForecast,15*60e3); setInterval(loadRadar,5*60e3);
 </script>
