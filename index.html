@@ -22,7 +22,7 @@
   color-scheme:light;
   --bg:#e9f0ef;--panel:#ffffff;--panel-2:#f3f7f6;--line:#d3dfdd;--grid:#e3ebea;
   --ink:#0f2329;--ink-2:#3f565b;--muted:#5e7479;
-  --s-out:#0c8f74;--s-hot:#c95f2e;--s-cold:#3b6fc2;
+  --s-out:#0c8f74;--s-hot:#c95f2e;--s-cold:#3b6fc2;--s-4:#a8740a;
   --band-hot:rgba(201,95,46,.10);--band-cold:rgba(59,111,194,.10);
   --ok:#1f7a4d;--watch:#9a6400;--warn:#b3361f;
   --range:#0c8f74;--focus:#0c8f74;
@@ -31,7 +31,7 @@
   color-scheme:dark;
   --bg:#0d1c22;--panel:#132830;--panel-2:#17303a;--line:#22414a;--grid:#1c3640;
   --ink:#e6efed;--ink-2:#b9cbc9;--muted:#8ea6a6;
-  --s-out:#1aa085;--s-hot:#d96c3c;--s-cold:#5a8ce0;
+  --s-out:#1aa085;--s-hot:#d96c3c;--s-cold:#5a8ce0;--s-4:#c98500;
   --band-hot:rgba(217,108,60,.13);--band-cold:rgba(90,140,224,.13);
   --ok:#4cc38a;--watch:#e0a54a;--warn:#ef7b62;
   --range:#1aa085;--focus:#5fd0b8;
@@ -40,7 +40,7 @@
   color-scheme:dark;
   --bg:#0d1c22;--panel:#132830;--panel-2:#17303a;--line:#22414a;--grid:#1c3640;
   --ink:#e6efed;--ink-2:#b9cbc9;--muted:#8ea6a6;
-  --s-out:#1aa085;--s-hot:#d96c3c;--s-cold:#5a8ce0;
+  --s-out:#1aa085;--s-hot:#d96c3c;--s-cold:#5a8ce0;--s-4:#c98500;
   --band-hot:rgba(217,108,60,.13);--band-cold:rgba(90,140,224,.13);
   --ok:#4cc38a;--watch:#e0a54a;--warn:#ef7b62;
   --range:#1aa085;--focus:#5fd0b8;
@@ -158,6 +158,27 @@ a{color:var(--s-out)}
 footer{color:var(--muted);font-size:12.5px;margin-top:16px;line-height:1.6;max-width:90ch}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
+/* phone + tablet */
+.tabs,.layers{-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.lower>*,.hero>*,.card{min-width:0}
+html,body{overflow-x:hidden}
+.tabs::-webkit-scrollbar,.layers::-webkit-scrollbar{display:none}
+#chart svg rect#hit{touch-action:pan-y}
+@media (min-width:1500px){.wrap{max-width:1440px}.radar-img{aspect-ratio:auto;height:640px}}
+@media (max-width:700px){
+  .top{gap:10px}
+  .brand{width:100%;flex-direction:column;gap:0}
+  .tabs{order:2;width:100%;overflow-x:auto;flex-wrap:nowrap}
+  .tabs button{flex:1 0 auto;padding:7px 12px}
+  .pill{order:3}.upd#updated{order:4}.tbtn{order:5;margin-left:auto}
+  .layers{flex-wrap:nowrap;overflow-x:auto}
+  .layers button{flex:0 0 auto;padding:7px 12px}
+  .radar-img{aspect-ratio:auto;height:62vh;min-height:360px}
+  .chip{font-size:11px;padding:2px 5px 2px 3px;gap:3px}.chip b{font-size:12.5px}.chip svg{width:13px;height:13px}
+  .maplegend{bottom:18px;left:6px;padding:6px 8px;font-size:11px}.maplegend .lg-body{min-width:0}
+  .card{padding:14px}
+  .card-head{gap:8px}
+}
 @media (max-width:980px){.hero{grid-template-columns:1fr}.now{border-right:0;border-bottom:1px solid var(--line)}.lower{grid-template-columns:1fr}}
 @media (max-width:520px){.now .t{font-size:68px}.days li{grid-template-columns:48px 24px 30px 1fr 30px 40px;gap:6px;font-size:13px}.legend{margin-left:0}}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
@@ -166,7 +187,7 @@ footer{color:var(--muted);font-size:12.5px;margin-top:16px;line-height:1.6;max-w
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="brand"><h1>ESSIE Weather Desk</h1><span class="place">Mississippi</span></div>
+    <div class="brand"><h1>ESSIE Weather Desk</h1><span class="place">Mississippi and Louisiana</span></div>
     <div class="tabs seg" role="tablist" aria-label="County" id="tabs"></div>
     <span class="pill ok" id="pill" role="status">Loading</span>
     <span class="upd" id="updated"></span>
@@ -191,6 +212,7 @@ footer{color:var(--muted);font-size:12.5px;margin-top:16px;line-height:1.6;max-w
         <span class="upd" id="rtime"></span>
         <div class="seg" role="group" aria-label="Map view" style="margin-left:auto">
           <button type="button" id="usa" aria-pressed="false">USA</button>
+          <button type="button" id="world" aria-pressed="false">World</button>
         </div>
         <div class="seg" role="group" aria-label="Radar animation" id="playwrap">
           <button type="button" id="rplay" aria-pressed="true">Pause</button>
@@ -198,6 +220,7 @@ footer{color:var(--muted);font-size:12.5px;margin-top:16px;line-height:1.6;max-w
       </div>
       <div class="seg layers" role="group" aria-label="Map layer" id="layers">
         <button type="button" data-layer="radar" aria-pressed="true">Radar</button>
+        <button type="button" data-layer="sat" aria-pressed="false">Satellite</button>
         <button type="button" data-layer="temp" aria-pressed="false">Temperature</button>
         <button type="button" data-layer="clouds" aria-pressed="false">Clouds</button>
         <button type="button" data-layer="aqi" aria-pressed="false">Air quality</button>
@@ -217,7 +240,7 @@ footer{color:var(--muted);font-size:12.5px;margin-top:16px;line-height:1.6;max-w
   </div>
 
   <footer>
-    Forecast from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Alerts and radar from the <a href="https://www.weather.gov/" target="_blank" rel="noopener">National Weather Service</a>. Forecasts are for Gulfport (Harrison), Bay St. Louis (Hancock) and Vicksburg (Warren). Updates itself every 15 minutes while open; radar every 5.
+    Forecast from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Alerts and radar from the <a href="https://www.weather.gov/" target="_blank" rel="noopener">National Weather Service</a>. Forecasts are for Gulfport (Harrison), Bay St. Louis (Hancock), Vicksburg (Warren) and Baton Rouge (East Baton Rouge Parish). Updates itself every 15 minutes while open; radar every 5.
   </footer>
 </div>
 
@@ -226,7 +249,8 @@ const TZ="America/Chicago";
 const COUNTIES=[
   {id:"harrison",name:"Harrison",town:"Gulfport",stn:"KGPT",lat:30.3674,lon:-89.0928,color:"var(--s-out)"},
   {id:"hancock", name:"Hancock", town:"Bay St. Louis",stn:"KHSA",lat:30.3088,lon:-89.3300,color:"var(--s-hot)"},
-  {id:"warren",  name:"Warren",  town:"Vicksburg",stn:"KVKS",lat:32.3526,lon:-90.8779,color:"var(--s-cold)"}
+  {id:"warren",  name:"Warren",  town:"Vicksburg",stn:"KVKS",lat:32.3526,lon:-90.8779,color:"var(--s-cold)"},
+  {id:"batonrouge",name:"Baton Rouge",area:"East Baton Rouge Parish",town:"Baton Rouge",stn:"KBTR",lat:30.4515,lon:-91.1871,color:"var(--s-4)"}
 ];
 
 /* ---------- icons (stroke, currentColor) ---------- */
@@ -293,12 +317,12 @@ function drawChart(){
     const i=Math.max(0,Math.min(n-1,Math.round((px-m.l)/(W-m.l-m.r)*(n-1)))), xi=x(i);
     hov.style.display=""; box.querySelector("#hx").setAttribute("x1",xi); box.querySelector("#hx").setAttribute("x2",xi);
     series.forEach((s,k)=>{const c=box.querySelector("#h"+k); if(s[i]==null){c.style.display="none";return} c.style.display=""; c.setAttribute("cx",xi); c.setAttribute("cy",y(s[i]));});
-    tip.innerHTML=`<b>${fmtHour(time[i])}</b>`+COUNTIES.map((c,k)=>`<div class="row"><i style="background:${c.color}"></i>${c.name} (${c.town})<span class="v num">${series[k][i]==null?"–":r(series[k][i])+"°F"}</span></div>`).join("");
+    tip.innerHTML=`<b>${fmtHour(time[i])}</b>`+COUNTIES.map((c,k)=>`<div class="row"><i style="background:${c.color}"></i>${c.name===c.town?c.name:`${c.name} (${c.town})`}<span class="v num">${series[k][i]==null?"–":r(series[k][i])+"°F"}</span></div>`).join("");
     tip.style.opacity=1; const tw=tip.offsetWidth, tx=xi*(rect.width/W);
     tip.style.left=Math.min(rect.width-tw-4,Math.max(4,tx+12))+"px"; tip.style.top="8px";
   });
   hit.addEventListener("pointerleave",()=>{hov.style.display="none";tip.style.opacity=0});
-  box.setAttribute("aria-label","Hourly temperature for the next 7 days in Harrison, Hancock and Warren counties.");
+  box.setAttribute("aria-label","Hourly temperature for the next 7 days in Harrison, Hancock and Warren counties and Baton Rouge.");
 }
 addEventListener("resize",()=>{clearTimeout(drawChart.t);drawChart.t=setTimeout(drawChart,120)});
 
@@ -325,7 +349,7 @@ function renderCounty(){
       <div><dt>Air quality</dt><dd class="num" id="aqiNow">${aqiText(k)}</dd></div>
       <div><dt>Sunset</dt><dd class="num">${tm(D.sunset[0])}</dd></div>
     </dl>`;
-  document.getElementById("daysTitle").textContent=`7-day forecast, ${C.name} County`;
+  document.getElementById("daysTitle").textContent=`7-day forecast, ${C.area||C.name+" County"}`;
   const wLo=Math.min(...D.temperature_2m_min), wHi=Math.max(...D.temperature_2m_max), span=Math.max(1,wHi-wLo);
   document.getElementById("days").innerHTML=D.time.map((t,i)=>{
     const [dd,di]=WMO(D.weather_code[i]);
@@ -344,7 +368,7 @@ function renderAlerts(){
   let html="", total=0, worst="ok";
   COUNTIES.forEach((C,k)=>{
     const list=ALERTS[k];
-    html+=`<div class="alert-county">${C.name} County</div>`;
+    html+=`<div class="alert-county">${C.area||C.name+" County"}</div>`;
     if(list===null){html+=`<div class="callout watch">${I.watch}<div>Couldn't reach the Weather Service for ${C.name}. It tries again in 15 minutes.</div></div>`;return}
     if(!list.length){html+=`<div class="callout ok">${I.ok}<div>No active weather alerts.</div></div>`;return}
     list.forEach(a=>{const lv=sevOf(a); total++; if(lv==="warning"||worst==="ok") worst=lv;
@@ -391,11 +415,11 @@ async function load(){
 
 /* ---------- measured conditions: NWS airport weather stations ---------- */
 const STN={"Gulfport":"KGPT","Biloxi":"KBIX","Bay St. Louis":"KHSA","Pascagoula":"KPQL","Picayune":"KMJD","Slidell":"KASD","New Orleans":"KMSY",
-  "Mobile":"KMOB","Hattiesburg":"KHBG","McComb":"KMCB","Brookhaven":"KBVQ","Natchez":"KHEZ","Vicksburg":"KVKS","Jackson":"KJAN",
+  "Mobile":"KMOB","Hattiesburg":"KHBG","McComb":"KMCB","Brookhaven":"KBVQ","Natchez":"KHEZ","Baton Rouge":"KBTR","Lafayette":"KLFT","Vicksburg":"KVKS","Jackson":"KJAN",
   "New York":"KNYC","Los Angeles":"KLAX","Chicago":"KORD","Houston":"KIAH","Phoenix":"KPHX","Dallas":"KDFW","San Antonio":"KSAT","Denver":"KDEN","Seattle":"KSEA","San Francisco":"KSFO","Las Vegas":"KLAS","Salt Lake City":"KSLC","Minneapolis":"KMSP","Kansas City":"KMCI","St. Louis":"KSTL","Detroit":"KDTW","Atlanta":"KATL","Miami":"KMIA","Orlando":"KMCO","Tampa":"KTPA","Charlotte":"KCLT","Washington DC":"KDCA","Boston":"KBOS","Philadelphia":"KPHL","Nashville":"KBNA","Memphis":"KMEM","Birmingham":"KBHM","Little Rock":"KLIT","Oklahoma City":"KOKC","Albuquerque":"KABQ","Portland":"KPDX","Shreveport":"KSHV"};
 const STN_NAME={KGPT:"Gulfport-Biloxi Airport",KBIX:"Keesler Air Force Base",KHSA:"Stennis Airport",KPQL:"Pascagoula Airport",KMJD:"Picayune Airport",
   KASD:"Slidell Airport",KMSY:"New Orleans Airport",KMOB:"Mobile Airport",KHBG:"Hattiesburg Airport",KMCB:"McComb Airport",KBVQ:"Brookhaven Airport",
-  KHEZ:"Natchez Airport",KVKS:"Vicksburg Airport",KJAN:"Jackson Airport"};
+  KHEZ:"Natchez Airport",KBTR:"Baton Rouge Metro Airport",KLFT:"Lafayette Airport",KVKS:"Vicksburg Airport",KJAN:"Jackson Airport"};
 let OBS={};
 const toF=c=>c*9/5+32;
 const toMph=q=>q&&q.value!=null?(/m_s/.test(q.unitCode||"")?q.value*2.23694:q.value/1.609344):null;
@@ -426,7 +450,7 @@ const TOWNS=[ // all always shown; tier 2 towns show temperature only when zoome
   ["Waveland",30.2869,-89.3762,2],["Pass Christian",30.3158,-89.2475,2],["Long Beach",30.3505,-89.1528,2],["Ocean Springs",30.4113,-88.8278,2],
   ["Pascagoula",30.3658,-88.5561,1],["Picayune",30.5255,-89.6798,1],["Slidell",30.2752,-89.7812,1],["New Orleans",29.9511,-90.0715,1],
   ["Mobile",30.6954,-88.0399,1],["Hattiesburg",31.3271,-89.2903,1],["McComb",31.2438,-90.4532,2],["Brookhaven",31.5791,-90.4407,2],
-  ["Natchez",31.5604,-91.4032,1],["Vicksburg",32.3526,-90.8779,1,1],["Jackson",32.2988,-90.1848,1],["Yazoo City",32.8551,-90.4056,2],
+  ["Natchez",31.5604,-91.4032,1],["Baton Rouge",30.4515,-91.1871,1,1],["Lafayette",30.2241,-92.0198,1],["Vicksburg",32.3526,-90.8779,1,1],["Jackson",32.2988,-90.1848,1],["Yazoo City",32.8551,-90.4056,2],
   ["New York",40.7794,-73.9692,3],["Los Angeles",33.9416,-118.4085,3],["Chicago",41.9786,-87.9048,3],["Houston",29.9844,-95.3414,3],["Phoenix",33.4342,-112.0116,3],["Dallas",32.8998,-97.0403,3],["San Antonio",29.5337,-98.4698,3],["Denver",39.8561,-104.6737,3],["Seattle",47.4502,-122.3088,3],["San Francisco",37.6213,-122.379,3],["Las Vegas",36.084,-115.1537,3],["Salt Lake City",40.7899,-111.9791,3],["Minneapolis",44.8848,-93.2223,3],["Kansas City",39.2976,-94.7139,3],["St. Louis",38.7487,-90.37,3],["Detroit",42.2162,-83.3554,3],["Atlanta",33.6407,-84.4277,3],["Miami",25.7959,-80.287,3],["Orlando",28.4312,-81.3081,3],["Tampa",27.9755,-82.5332,3],["Charlotte",35.214,-80.9431,3],["Washington DC",38.8512,-77.0402,3],["Boston",42.3656,-71.0096,3],["Philadelphia",39.8744,-75.2424,3],["Nashville",36.1263,-86.6774,3],["Memphis",35.0421,-89.9792,3],["Birmingham",33.5629,-86.7535,3],["Little Rock",34.7294,-92.2243,3],["Oklahoma City",35.3931,-97.6007,3],["Albuquerque",35.0402,-106.6091,3],["Portland",45.5898,-122.5951,3],["Shreveport",32.4466,-93.8256,3]];
 let TW=null, chipLayer=null;
 async function loadTowns(){
@@ -466,7 +490,7 @@ let GRID=null, GRIDKEY="", AQ=null, mode="radar", overlay=null, labels=null, wms
 const GN=9;   // 9 x 9 sample points across the visible map
 function viewGrid(){
   const b=map.getBounds().pad(0.08);
-  const lat0=Math.max(18,b.getSouth()), lat1=Math.min(60,b.getNorth()), lon0=Math.max(-170,b.getWest()), lon1=Math.min(-50,b.getEast());
+  const lat0=Math.max(-70,b.getSouth()), lat1=Math.min(75,b.getNorth()), lon0=Math.max(-180,b.getWest()), lon1=Math.min(180,b.getEast());
   const lats=[...Array(GN)].map((_,i)=>lat0+(lat1-lat0)*i/(GN-1)), lons=[...Array(GN)].map((_,j)=>lon0+(lon1-lon0)*j/(GN-1));
   return {lat0,lat1,lon0,lon1,lats,lons};
 }
@@ -507,6 +531,8 @@ const RAMP=(a,b,c)=>`<span>${a}</span><span class="ramp" style="background:${b}"
 const LAYERS={
   radar:{title:"Radar",legend:()=>RAMP("Light","linear-gradient(90deg,#04e9e7,#019ff4,#02fd02,#01c501,#fdf802,#fd9500,#fd0000,#bc0000)","Heavy rain / storms"),
     note:`NEXRAD radar for the whole US (National Weather Service data via Iowa Environmental Mesonet), last 50 minutes, refreshed every 5 minutes. Faint rings around radar sites, mostly at night, are bugs and dust, not rain.`},
+  sat:{title:"Satellite clouds",legend:()=>RAMP("Clear / warm","linear-gradient(90deg,#000,#777,#fff)","High, cold cloud tops"),
+    note:`Live infrared satellite imagery from NASA (GOES-East, GOES-West and Himawari), updated about every 10 minutes. Covers the Americas, the Pacific, Asia and Australia; brighter means taller storm clouds. Zoom out with World to see it all.`},
   temp:{title:"Temperature",note:"National Weather Service temperature map for the current hour (National Digital Forecast Database, about 1.5-mile detail). Town tags show measured temperatures."},
   clouds:{title:"Cloud cover",grid:"wx",key:"clouds",color:v=>{const c=isDark()?[235,240,242]:[96,110,116];return [...c,Math.round(Math.min(100,v)/100*190)]},label:v=>r(v)+"%",
     legend:()=>RAMP("Clear",`linear-gradient(90deg,transparent,${isDark()?"#ebf0f2":"#606e74"})`,"Overcast"),note:"Current cloud cover for the area on screen (Open-Meteo weather model, refreshed every 30 minutes and when you move the map)."},
@@ -559,9 +585,20 @@ async function showLayer(m){
   if(!map) return;
   clearOverlay();
   const D=LAYERS[m];
-  if(isRadar){ layers.forEach((l,k)=>l.setOpacity(k===frame?0.65:0)); if(playing) play(true); else showFrame(frame); setLegend(D.legend(),D.note); return; }
+  if(isRadar){ if(base) base.setUrl(baseUrl()); layers.forEach((l,k)=>l.setOpacity(k===frame?0.65:0)); if(playing) play(true); else showFrame(frame); setLegend(D.legend(),D.note); return; }
   clearTimeout(timer); layers.forEach(l=>l.setOpacity(0));
   document.getElementById("rtime").textContent="Now";
+  if(m==="sat"){
+    if(!map.getPane("sat")){ map.createPane("sat"); const p=map.getPane("sat"); p.style.zIndex=350; p.style.mixBlendMode="screen"; p.style.pointerEvents="none"; }
+    const G="https://gibs.earthdata.nasa.gov/wmts/epsg3857/nrt/", L_=[];
+    ["Himawari_AHI","GOES-West_ABI","GOES-East_ABI"].forEach(sat=>[6,7].forEach(lv=>
+      L_.push(L.tileLayer(`${G}${sat}_Band13_Clean_Infrared_v0_NRT_ZENJPEG/default/GoogleMapsCompatible_Level${lv}/{z}/{y}/{x}.jpg`,
+        {pane:"sat",maxNativeZoom:lv,maxZoom:12,opacity:.85,attribution:"Satellite: NASA GIBS (GOES, Himawari)"}))));
+    wms=L.layerGroup(L_).addTo(map);
+    if(!isDark()&&base) base.setUrl(`${ESRI}World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`);
+    setLegend(D.legend(),D.note); return;
+  }
+  if(base) base.setUrl(baseUrl());
   if(m==="temp"){ overlay=ndfdImage().addTo(map); setLegend("Loading legend…",D.note); const lg=await arcLegend(); if(my===busy) setLegend(lg,D.note); return; }
   if(m==="lightning"){
     wms=L.tileLayer.wms(LIGHTNING,{layers:"lightning_detection",format:"image/png",transparent:true,version:"1.3.0",zIndex:320,opacity:.9}).addTo(map);
@@ -581,7 +618,7 @@ async function showLayer(m){
 }
 document.getElementById("layers").addEventListener("click",e=>{const b=e.target.closest("[data-layer]"); if(b) showLayer(b.dataset.layer)});
 let moveT=null;
-function onMove(){ clearTimeout(moveT); moveT=setTimeout(()=>{ if(mode!=="radar"&&mode!=="lightning") showLayer(mode); },350); }
+function onMove(){ clearTimeout(moveT); moveT=setTimeout(()=>{ if(!["radar","lightning","sat"].includes(mode)) showLayer(mode); },350); }
 
 /* ---------- radar: NEXRAD mosaic tiles (IEM), animated ---------- */
 const FRAMES=["m50m","m45m","m40m","m35m","m30m","m25m","m20m","m15m","m10m","m05m",""];
@@ -591,11 +628,11 @@ const isDark=()=>document.documentElement.dataset.theme?document.documentElement
 const ESRI="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
 function baseUrl(){return `${ESRI}World_${isDark()?"Dark":"Light"}_Gray_Base/MapServer/tile/{z}/{y}/{x}`}
 function refUrl(){return `${ESRI}World_${isDark()?"Dark":"Light"}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`}
-function view(){const C=COUNTIES.find(c=>c.id===sel); return sel==="warren"?[[C.lat,C.lon],9]:[[30.42,-89.2],9]}
+function view(){const C=COUNTIES.find(c=>c.id===sel); return (sel==="warren"||sel==="batonrouge")?[[C.lat,C.lon],9]:[[30.42,-89.2],9]}
 function initMap(){
   if(typeof L==="undefined"){empty.style.display="flex";return false}
   if(map) return true;
-  map=L.map("map",{zoomControl:true,attributionControl:true,scrollWheelZoom:true});
+  map=L.map("map",{zoomControl:true,attributionControl:true,scrollWheelZoom:true,minZoom:2,worldCopyJump:true});
   base=L.tileLayer(baseUrl(),{maxZoom:12,attribution:'Map: Esri, HERE, Garmin, &copy; OpenStreetMap'}).addTo(map);
   map.createPane("labels"); map.getPane("labels").style.zIndex=450; map.getPane("labels").style.pointerEvents="none";
   ref=L.tileLayer(refUrl(),{maxZoom:12,pane:"labels"}).addTo(map);
@@ -635,6 +672,7 @@ function radar(){
 }
 function recenter(){ if(map){const [c,z]=view(); map.flyTo(c,z,{duration:.6})} }
 document.getElementById("usa").addEventListener("click",()=>{ if(map) map.flyTo([38.5,-96],4,{duration:.8}); });
+document.getElementById("world").addEventListener("click",()=>{ if(!map) return; map.flyTo([15,-100],2,{duration:.9}); if(mode==="radar") showLayer("sat"); });
 document.getElementById("tabs").addEventListener("click",e=>{if(e.target.closest("[data-county]")) setTimeout(recenter,0)});
 
 /* ---------- theme toggle ---------- */
