@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ESSIE Weather Desk</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ESSIE">
+<meta name="theme-color" content="#0d1c22">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#e9f0ef;--panel:#ffffff;--panel-2:#f3f7f6;--line:#d3dfdd;--grid:#e3ebea;
+  --ink:#0f2329;--ink-2:#3f565b;--muted:#5e7479;
+  --s-out:#0c8f74;--s-hot:#c95f2e;--s-cold:#3b6fc2;
+  --band-hot:rgba(201,95,46,.10);--band-cold:rgba(59,111,194,.10);
+  --ok:#1f7a4d;--watch:#9a6400;--warn:#b3361f;
+  --range:#0c8f74;--focus:#0c8f74;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0d1c22;--panel:#132830;--panel-2:#17303a;--line:#22414a;--grid:#1c3640;
+  --ink:#e6efed;--ink-2:#b9cbc9;--muted:#8ea6a6;
+  --s-out:#1aa085;--s-hot:#d96c3c;--s-cold:#5a8ce0;
+  --band-hot:rgba(217,108,60,.13);--band-cold:rgba(90,140,224,.13);
+  --ok:#4cc38a;--watch:#e0a54a;--warn:#ef7b62;
+  --range:#1aa085;--focus:#5fd0b8;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0d1c22;--panel:#132830;--panel-2:#17303a;--line:#22414a;--grid:#1c3640;
+  --ink:#e6efed;--ink-2:#b9cbc9;--muted:#8ea6a6;
+  --s-out:#1aa085;--s-hot:#d96c3c;--s-cold:#5a8ce0;
+  --band-hot:rgba(217,108,60,.13);--band-cold:rgba(90,140,224,.13);
+  --ok:#4cc38a;--watch:#e0a54a;--warn:#ef7b62;
+  --range:#1aa085;--focus:#5fd0b8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:15px/1.5 "Barlow",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.num{font-family:"Barlow Condensed","Barlow",sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand h1{margin:0;font-size:21px;font-weight:600;letter-spacing:-.005em}
+.brand .place{color:var(--muted);font-size:15px}
+.upd{color:var(--muted);font-size:13px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 9px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--panel)}
+.pill svg{width:15px;height:15px}
+.pill.ok{color:var(--ok)}.pill.watch{color:var(--watch)}.pill.warning{color:var(--warn)}
+.tbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:8px;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer}
+
+/* layout */
+.hero{display:grid;grid-template-columns:280px 1fr;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.now{padding:20px 22px;border-right:1px solid var(--line);background:var(--panel-2);display:flex;flex-direction:column;gap:14px}
+.now .cond{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-weight:500;font-size:16px}
+.now .cond svg{width:30px;height:30px;color:var(--ink-2)}
+.now .t{font-size:84px;line-height:.9;font-weight:600;letter-spacing:-.02em}
+.now .t sup{font-size:34px;vertical-align:top;position:relative;top:8px;margin-left:2px;color:var(--ink-2)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin:0}
+.stats dt{color:var(--muted);font-size:12.5px}
+.stats dd{margin:1px 0 0;font-size:20px;font-weight:600}
+.stats dd small{font-size:13px;color:var(--muted);font-weight:500;font-family:"Barlow",sans-serif}
+.chartbox{padding:16px 18px 10px;min-width:0}
+.chart-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.chart-head h2{margin:0;font-size:16px;font-weight:600}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-left:auto}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:16px;height:0;border-top:2px solid currentColor}
+.legend i.dash{border-top-style:dashed}
+#chart{position:relative}
+#chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.18);white-space:nowrap;opacity:0;transition:opacity .08s}
+.tip b{display:block;font-weight:600;margin-bottom:3px}
+.tip .row{display:flex;align-items:center;gap:7px;color:var(--ink-2)}
+.tip .row i{width:10px;height:2px;display:inline-block}
+.tip .row .v{margin-left:auto;padding-left:14px;color:var(--ink);font-weight:600}
+
+.lower{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-top:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.card h2{margin:0;font-size:16px;font-weight:600}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.seg{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13px;padding:5px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--s-out);color:#fff}
+.radar-img{position:relative;border-radius:10px;overflow:hidden;background:var(--panel-2);aspect-ratio:600/520;min-height:300px}
+#map{position:absolute;inset:0;background:var(--panel-2)}
+.leaflet-container{font:inherit;background:var(--panel-2)}
+.leaflet-control-attribution{font-size:10px}
+.town{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.town::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--s-out);margin-right:5px;vertical-align:1px}
+.radar-img .empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--muted);font-size:14px;text-align:center;padding:20px}
+.foot-note{color:var(--muted);font-size:12.5px;margin-top:8px}
+.layers{display:flex;margin:0 0 10px;width:100%;flex-wrap:wrap}
+.layers button{flex:1;padding:6px 4px}
+.maplegend{position:absolute;left:10px;bottom:22px;z-index:600;max-width:calc(100% - 20px);background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--ink-2);box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}
+.maplegend .lg-title{font-weight:600;color:var(--ink);margin-bottom:5px;font-size:12.5px}
+.maplegend .lg-body{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:220px}
+.maplegend .swatches{display:flex;flex-wrap:wrap;gap:4px 10px}
+.maplegend .sw{display:inline-flex;align-items:center;gap:4px}
+.maplegend .sw img{width:14px;height:14px;border-radius:3px}
+.maplegend .lgimg{max-height:120px;background:#fff;border-radius:4px;padding:2px}
+.maplegend .ramp{flex:1;min-width:140px;height:8px;border-radius:4px}
+.maplegend .cat{display:inline-flex;align-items:center;gap:5px;margin-right:6px}
+.maplegend .cat i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.chip{display:inline-flex;align-items:center;gap:4px;background:rgba(13,28,34,.86);color:#e6efed;border:1px solid rgba(255,255,255,.18);border-radius:7px;padding:2px 6px 2px 4px;font:600 12px/1.2 "Barlow",sans-serif;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:translate(-50%,-50%)}
+.chip b{font:600 14px/1 "Barlow Condensed","Barlow",sans-serif}
+.chip.sm{padding:1px 5px;font-size:10.5px;gap:3px}.chip.sm b{font-size:12px}
+.chip svg{width:15px;height:15px}
+.chip .wd{font-size:11px;color:#a9bdbc;font-weight:500}
+.chip.home{border-color:#1aa085;box-shadow:0 0 0 1px #1aa085,0 2px 6px rgba(0,0,0,.35)}
+.leaflet-tooltip.tt{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;font:13px/1.45 "Barlow",sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.chipicon{background:none;border:0}
+.gl{background:transparent;border:0;color:#fff;font:600 11px/1 "Barlow Condensed","Barlow",sans-serif;text-shadow:0 0 3px rgba(0,0,0,.9),0 0 1px #000;white-space:nowrap;text-align:center}
+a{color:var(--s-out)}
+
+/* ESSIE callouts */
+.callouts{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.callout{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:var(--panel-2);border-left:3px solid var(--ok);font-size:14px;color:var(--ink-2)}
+.callout svg{flex:none;width:18px;height:18px;margin-top:1px}
+.callout b{color:var(--ink);font-weight:600}
+.callout.warning{border-left-color:var(--warn)}.callout.warning svg{color:var(--warn)}
+.callout.watch{border-left-color:var(--watch)}.callout.watch svg{color:var(--watch)}
+.callout.ok svg{color:var(--ok)}
+
+/* 7-day list */
+.days{list-style:none;margin:0;padding:0}
+.days li{display:grid;grid-template-columns:62px 26px 34px 1fr 34px 46px;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.days li:first-child{border-top:0}
+.days .dname{font-weight:600}
+.days .ic svg{width:22px;height:22px;color:var(--ink-2);display:block}
+.days .lo{color:var(--muted);text-align:right}
+.days .hi{font-weight:600}
+.range{position:relative;height:6px;border-radius:3px;background:var(--grid)}
+.range span{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--range)}
+.days .rain{color:var(--ink-2);font-size:13px;text-align:right}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;justify-self:end}
+.badge svg{width:13px;height:13px}
+.badge.ok{color:var(--ok)}.badge.watch{color:var(--watch)}.badge.warning{color:var(--warn)}
+.err{color:var(--warn)}
+.tabs{margin-left:0}
+.alert-county{font-size:12.5px;color:var(--muted);font-weight:600;margin:6px 0 2px}
+.callout .when{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.callout a{font-size:12.5px}
+footer{color:var(--muted);font-size:12.5px;margin-top:16px;line-height:1.6;max-width:90ch}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media (max-width:980px){.hero{grid-template-columns:1fr}.now{border-right:0;border-bottom:1px solid var(--line)}.lower{grid-template-columns:1fr}}
+@media (max-width:520px){.now .t{font-size:68px}.days li{grid-template-columns:48px 24px 30px 1fr 30px 40px;gap:6px;font-size:13px}.legend{margin-left:0}}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><h1>ESSIE Weather Desk</h1><span class="place">Mississippi</span></div>
+    <div class="tabs seg" role="tablist" aria-label="County" id="tabs"></div>
+    <span class="pill ok" id="pill" role="status">Loading</span>
+    <span class="upd" id="updated"></span>
+    <button class="tbtn" id="theme" type="button" aria-label="Switch light or dark mode">Theme</button>
+  </div>
+
+  <section class="hero" aria-label="Current conditions and 7-day temperature">
+    <div class="now" id="now"><div class="upd">Loading current conditions…</div></div>
+    <div class="chartbox">
+      <div class="chart-head">
+        <h2>Temperature, next 7 days</h2>
+        <div class="legend" id="legend" aria-hidden="true"></div>
+      </div>
+      <div id="chart" role="img" aria-label="Hourly temperature chart"></div>
+    </div>
+  </section>
+
+  <div class="lower">
+    <section class="card" aria-label="Live weather map">
+      <div class="card-head">
+        <h2>Live map</h2>
+        <span class="upd" id="rtime"></span>
+        <div class="seg" role="group" aria-label="Map view" style="margin-left:auto">
+          <button type="button" id="usa" aria-pressed="false">USA</button>
+        </div>
+        <div class="seg" role="group" aria-label="Radar animation" id="playwrap">
+          <button type="button" id="rplay" aria-pressed="true">Pause</button>
+        </div>
+      </div>
+      <div class="seg layers" role="group" aria-label="Map layer" id="layers">
+        <button type="button" data-layer="radar" aria-pressed="true">Radar</button>
+        <button type="button" data-layer="temp" aria-pressed="false">Temperature</button>
+        <button type="button" data-layer="clouds" aria-pressed="false">Clouds</button>
+        <button type="button" data-layer="aqi" aria-pressed="false">Air quality</button>
+        <button type="button" data-layer="storm" aria-pressed="false">Storms</button>
+        <button type="button" data-layer="lightning" aria-pressed="false">Lightning</button>
+      </div>
+      <div class="radar-img"><div id="map" role="img" aria-label="Live weather map"></div><div class="maplegend" id="maplegend"></div><div class="empty" id="radar-empty">The map couldn't load. Check the internet connection; it tries again in 5 minutes.</div></div>
+      <div class="foot-note" id="mapnote"></div>
+    </section>
+
+    <section class="card" aria-label="ESSIE watch">
+      <div class="card-head"><h2>ESSIE watch</h2><span class="upd">Active National Weather Service alerts</span></div>
+      <div class="callouts" id="callouts"></div>
+      <div class="card-head" style="margin:16px 0 4px"><h2 id="daysTitle">7-day forecast</h2></div>
+      <ul class="days" id="days"></ul>
+    </section>
+  </div>
+
+  <footer>
+    Forecast from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Alerts and radar from the <a href="https://www.weather.gov/" target="_blank" rel="noopener">National Weather Service</a>. Forecasts are for Gulfport (Harrison), Bay St. Louis (Hancock) and Vicksburg (Warren). Updates itself every 15 minutes while open; radar every 5.
+  </footer>
+</div>
+
+<script>
+const TZ="America/Chicago";
+const COUNTIES=[
+  {id:"harrison",name:"Harrison",town:"Gulfport",stn:"KGPT",lat:30.3674,lon:-89.0928,color:"var(--s-out)"},
+  {id:"hancock", name:"Hancock", town:"Bay St. Louis",stn:"KHSA",lat:30.3088,lon:-89.3300,color:"var(--s-hot)"},
+  {id:"warren",  name:"Warren",  town:"Vicksburg",stn:"KVKS",lat:32.3526,lon:-90.8779,color:"var(--s-cold)"}
+];
+
+/* ---------- icons (stroke, currentColor) ---------- */
+const S='fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+const I={
+  sun:`<svg viewBox="0 0 24 24" ${S}><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></svg>`,
+  part:`<svg viewBox="0 0 24 24" ${S}><path d="M8 3.5v1.3M3.8 8H2.5M4.9 4.9l.9.9M12.1 4.9l-.9.9"/><path d="M5.6 10.6A3.5 3.5 0 0 1 11.6 7"/><path d="M8.5 19.5h9a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8.4 12a3.75 3.75 0 0 0 .1 7.5z"/></svg>`,
+  cloud:`<svg viewBox="0 0 24 24" ${S}><path d="M7 18.5h10.5a4 4 0 0 0 .4-8A6 6 0 0 0 6.6 11 3.75 3.75 0 0 0 7 18.5z"/></svg>`,
+  fog:`<svg viewBox="0 0 24 24" ${S}><path d="M7 13.5h10.5a3.5 3.5 0 0 0 .3-7A5.5 5.5 0 0 0 7.3 7.4 3 3 0 0 0 7 13.5z"/><path d="M4 17h16M6 20.5h12"/></svg>`,
+  rain:`<svg viewBox="0 0 24 24" ${S}><path d="M7 14.5h10.5a3.75 3.75 0 0 0 .4-7.5A5.6 5.6 0 0 0 6.9 8 3.25 3.25 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 3M12.5 17.5l-1 3M16.5 17.5l-1 3"/></svg>`,
+  storm:`<svg viewBox="0 0 24 24" ${S}><path d="M7 14h10.5a3.75 3.75 0 0 0 .4-7.5A5.6 5.6 0 0 0 6.9 7.5 3.25 3.25 0 0 0 7 14z"/><path d="M12.5 14.5l-2 3.5h3l-2 3.5"/></svg>`,
+  snow:`<svg viewBox="0 0 24 24" ${S}><path d="M7 13.5h10.5a3.5 3.5 0 0 0 .3-7A5.5 5.5 0 0 0 7.3 7.4 3 3 0 0 0 7 13.5z"/><path d="M8 17.5h.01M12 19h.01M16 17.5h.01M10 21h.01M14 21h.01"/></svg>`,
+  ok:`<svg viewBox="0 0 24 24" ${S}><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>`,
+  watch:`<svg viewBox="0 0 24 24" ${S}><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>`,
+  warning:`<svg viewBox="0 0 24 24" ${S}><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.3h.01"/></svg>`
+};
+const WMO=c=>c===0?["Clear","sun"]:c<=2?["Partly cloudy","part"]:c===3?["Cloudy","cloud"]:c<=48?["Fog","fog"]:
+  c<=67?[c>=61?(c>=65?"Heavy rain":"Rain"):"Drizzle","rain"]:c<=77?["Snow","snow"]:c<=82?["Showers","rain"]:c<=86?["Snow showers","snow"]:["Thunderstorms","storm"];
+const r=Math.round;
+const fmtDay=(d,o={weekday:"short"})=>new Date(d+"T12:00:00").toLocaleDateString("en-US",o);
+const fmtHour=t=>new Date(t).toLocaleString("en-US",{weekday:"short",hour:"numeric"});
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let sel=(()=>{try{return localStorage.getItem("county")||"harrison"}catch(e){return "harrison"}})();
+let DATA=null, ALERTS=null;
+
+/* ---------- tabs ---------- */
+const tabs=document.getElementById("tabs");
+tabs.innerHTML=COUNTIES.map(c=>`<button type="button" role="tab" data-county="${c.id}">${c.name}</button>`).join("");
+tabs.addEventListener("click",e=>{const b=e.target.closest("[data-county]"); if(!b) return;
+  sel=b.dataset.county; try{localStorage.setItem("county",sel)}catch(err){} renderAll();});
+document.getElementById("legend").innerHTML=COUNTIES.map(c=>`<span style="color:${c.color}"><i></i><span style="color:var(--ink-2)">${c.name}</span></span>`).join("");
+
+/* ---------- chart: 3 counties ---------- */
+function drawChart(){
+  if(!DATA) return;
+  const box=document.getElementById("chart"), W=Math.max(320,box.clientWidth), H=Math.max(220,Math.min(320,W*0.36));
+  const m={t:12,r:12,b:26,l:34};
+  const time=DATA[0].hourly.time, n=time.length, series=DATA.map(d=>d.hourly.temperature_2m);
+  const all=series.flat().filter(v=>v!=null);
+  let lo=Math.floor(Math.min(...all)/5)*5, hi=Math.ceil(Math.max(...all)/5)*5; if(hi-lo<15) hi=lo+15;
+  const x=i=>m.l+(W-m.l-m.r)*i/(n-1), y=v=>m.t+(H-m.t-m.b)*(1-(v-lo)/(hi-lo));
+  const path=s=>{let d="",pen=false;s.forEach((v,i)=>{if(v==null){pen=false;return}d+=(pen?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1);pen=true});return d};
+  let g="";
+  for(let v=lo;v<=hi;v+=5){
+    g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>`;
+    g+=`<text x="${m.l-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" class="num">${v}°</text>`;
+  }
+  time.forEach((t,i)=>{ if(t.endsWith("T00:00")&&i>0) g+=`<line x1="${x(i)}" x2="${x(i)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--line)" stroke-width="1"/>`;
+    if(t.endsWith("T12:00")) g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${fmtDay(t.slice(0,10))}</text>`; });
+  // unselected first, selected on top and heavier
+  const order=COUNTIES.map((c,i)=>i).sort((a,b)=>(COUNTIES[a].id===sel)-(COUNTIES[b].id===sel));
+  order.forEach(i=>{const on=COUNTIES[i].id===sel;
+    g+=`<path d="${path(series[i])}" fill="none" stroke="${COUNTIES[i].color}" stroke-width="${on?2.5:1.5}" stroke-opacity="${on?1:.55}" stroke-linejoin="round"/>`;});
+  const nowIdx=time.findIndex(t=>new Date(t)>=new Date(Date.now()-30*60e3));
+  if(nowIdx>0) g+=`<line x1="${x(nowIdx)}" x2="${x(nowIdx)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink-2)" stroke-width="1" stroke-dasharray="2 3"/><text x="${x(nowIdx)+4}" y="${m.t+10}" font-size="11" fill="var(--ink-2)">Now</text>`;
+  g+=`<g id="hov" style="display:none"><line id="hx" y1="${m.t}" y2="${H-m.b}" stroke="var(--ink-2)" stroke-width="1"/>`+
+     COUNTIES.map((c,i)=>`<circle id="h${i}" r="4" fill="${c.color}" stroke="var(--panel)" stroke-width="2"/>`).join("")+`</g>
+     <rect id="hit" x="${m.l}" y="0" width="${W-m.l-m.r}" height="${H}" fill="transparent"/>`;
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg><div class="tip" id="tip"></div>`;
+  const hit=box.querySelector("#hit"), hov=box.querySelector("#hov"), tip=box.querySelector("#tip");
+  hit.addEventListener("pointermove",e=>{
+    const rect=box.getBoundingClientRect(), px=(e.clientX-rect.left)*(W/rect.width);
+    const i=Math.max(0,Math.min(n-1,Math.round((px-m.l)/(W-m.l-m.r)*(n-1)))), xi=x(i);
+    hov.style.display=""; box.querySelector("#hx").setAttribute("x1",xi); box.querySelector("#hx").setAttribute("x2",xi);
+    series.forEach((s,k)=>{const c=box.querySelector("#h"+k); if(s[i]==null){c.style.display="none";return} c.style.display=""; c.setAttribute("cx",xi); c.setAttribute("cy",y(s[i]));});
+    tip.innerHTML=`<b>${fmtHour(time[i])}</b>`+COUNTIES.map((c,k)=>`<div class="row"><i style="background:${c.color}"></i>${c.name} (${c.town})<span class="v num">${series[k][i]==null?"–":r(series[k][i])+"°F"}</span></div>`).join("");
+    tip.style.opacity=1; const tw=tip.offsetWidth, tx=xi*(rect.width/W);
+    tip.style.left=Math.min(rect.width-tw-4,Math.max(4,tx+12))+"px"; tip.style.top="8px";
+  });
+  hit.addEventListener("pointerleave",()=>{hov.style.display="none";tip.style.opacity=0});
+  box.setAttribute("aria-label","Hourly temperature for the next 7 days in Harrison, Hancock and Warren counties.");
+}
+addEventListener("resize",()=>{clearTimeout(drawChart.t);drawChart.t=setTimeout(drawChart,120)});
+
+/* ---------- current + 7-day for selected county ---------- */
+function renderCounty(){
+  if(!DATA) return;
+  const k=COUNTIES.findIndex(c=>c.id===sel), C=COUNTIES[k], j=DATA[k], D=j.daily, o=OBS[C.stn];
+  let [cd,ci]=WMO(j.current.weather_code);
+  const c=o?{temperature_2m:o.temp,apparent_temperature:o.feels,relative_humidity_2m:o.rh??j.current.relative_humidity_2m,
+             wind_speed_10m:o.wind??j.current.wind_speed_10m,wind_direction_10m:o.dir??j.current.wind_direction_10m}:j.current;
+  if(o&&o.text){cd=o.text; ci=obsIcon(o.text)||ci;}
+  const src=o?`Measured at ${STN_NAME[C.stn]}, ${hhmm(o.time)}`:"Estimate from weather model (station reading not available)";
+  const dirs=["N","NE","E","SE","S","SW","W","NW"], wdir=dirs[Math.round((c.wind_direction_10m||0)/45)%8];
+  const tm=s=>new Date(s).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  document.getElementById("now").innerHTML=`
+    <div class="cond">${I[ci]}<span>${cd} in ${C.town}</span></div>
+    <div class="upd" style="margin-top:-8px">${src}</div>
+    <div class="t num">${r(c.temperature_2m)}<sup>°F</sup></div>
+    <dl class="stats">
+      <div><dt>Feels like</dt><dd class="num">${r(c.apparent_temperature)}°</dd></div>
+      <div><dt>Humidity</dt><dd class="num">${r(c.relative_humidity_2m)}<small>%</small></dd></div>
+      <div><dt>Wind</dt><dd class="num">${r(c.wind_speed_10m)} <small>mph ${wdir}${o&&o.gust?`, gusts ${r(o.gust)}`:""}</small></dd></div>
+      <div><dt>Today</dt><dd class="num">${r(D.temperature_2m_max[0])}° <small>/ ${r(D.temperature_2m_min[0])}°</small></dd></div>
+      <div><dt>Air quality</dt><dd class="num" id="aqiNow">${aqiText(k)}</dd></div>
+      <div><dt>Sunset</dt><dd class="num">${tm(D.sunset[0])}</dd></div>
+    </dl>`;
+  document.getElementById("daysTitle").textContent=`7-day forecast, ${C.name} County`;
+  const wLo=Math.min(...D.temperature_2m_min), wHi=Math.max(...D.temperature_2m_max), span=Math.max(1,wHi-wLo);
+  document.getElementById("days").innerHTML=D.time.map((t,i)=>{
+    const [dd,di]=WMO(D.weather_code[i]);
+    const a=(D.temperature_2m_min[i]-wLo)/span*100, b=(D.temperature_2m_max[i]-wLo)/span*100;
+    return `<li><span class="dname">${i===0?"Today":fmtDay(t)}</span><span class="ic" title="${dd}">${I[di]}<span class="sr">${dd}</span></span>
+      <span class="lo num">${r(D.temperature_2m_min[i])}°</span><span class="range" aria-hidden="true"><span style="left:${a}%;width:${Math.max(3,b-a)}%"></span></span>
+      <span class="hi num">${r(D.temperature_2m_max[i])}°</span><span class="rain num" title="Chance of rain">${D.precipitation_probability_max[i]??0}%</span></li>`;
+  }).join("");
+}
+
+/* ---------- alerts (NWS) ---------- */
+const sevOf=a=>/warning/i.test(a.event)||/extreme|severe/i.test(a.severity)?"warning":"watch";
+function renderAlerts(){
+  const box=document.getElementById("callouts"), pill=document.getElementById("pill");
+  if(!ALERTS){box.innerHTML=`<div class="callout watch">${I.watch}<div>Checking National Weather Service alerts…</div></div>`;return}
+  let html="", total=0, worst="ok";
+  COUNTIES.forEach((C,k)=>{
+    const list=ALERTS[k];
+    html+=`<div class="alert-county">${C.name} County</div>`;
+    if(list===null){html+=`<div class="callout watch">${I.watch}<div>Couldn't reach the Weather Service for ${C.name}. It tries again in 15 minutes.</div></div>`;return}
+    if(!list.length){html+=`<div class="callout ok">${I.ok}<div>No active weather alerts.</div></div>`;return}
+    list.forEach(a=>{const lv=sevOf(a); total++; if(lv==="warning"||worst==="ok") worst=lv;
+      const ends=a.ends||a.expires; const when=ends?`Until ${new Date(ends).toLocaleString("en-US",{weekday:"short",hour:"numeric",minute:"2-digit"})}`:"";
+      const src=a.senderName?`from ${a.senderName}`:"";
+      html+=`<div class="callout ${lv}">${I[lv==="warning"?"warning":"watch"]}<div><b>${esc(a.event)}</b><span class="when">${esc([when,src].filter(Boolean).join(", "))}</span></div></div>`;});
+  });
+  box.innerHTML=html;
+  pill.className="pill "+worst;
+  pill.innerHTML=`${I[worst]}${total?`${total} active alert${total>1?"s":""}`:"No active alerts"}`;
+}
+async function loadAlerts(){
+  ALERTS=await Promise.all(COUNTIES.map(async C=>{
+    try{const res=await fetch(`https://api.weather.gov/alerts/active?point=${C.lat},${C.lon}`,{headers:{Accept:"application/geo+json"}});
+      if(!res.ok) throw 0; const j=await res.json();
+      const seen=new Set(); return (j.features||[]).map(f=>f.properties).filter(p=>!seen.has(p.event+p.ends)&&seen.add(p.event+p.ends));
+    }catch(e){return null}
+  }));
+  renderAlerts();
+}
+
+/* ---------- forecast ---------- */
+function renderAll(){
+  tabs.querySelectorAll("[data-county]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.county===sel));
+  renderCounty(); drawChart();
+}
+async function load(){
+  const q=new URLSearchParams({latitude:COUNTIES.map(c=>c.lat).join(","),longitude:COUNTIES.map(c=>c.lon).join(","),timezone:TZ,
+    temperature_unit:"fahrenheit",wind_speed_unit:"mph",forecast_days:7,
+    current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m",
+    daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
+    hourly:"temperature_2m"});
+  try{
+    const res=await fetch("https://api.open-meteo.com/v1/forecast?"+q);
+    if(!res.ok) throw new Error("the forecast service answered "+res.status);
+    let j=await res.json(); DATA=Array.isArray(j)?j:[j];
+    renderAll();
+    document.getElementById("updated").textContent="Updated "+new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  }catch(e){
+    document.getElementById("updated").innerHTML=`<span class="err">Couldn't load the forecast: ${esc(e.message)}. Check the internet connection; it tries again in 15 minutes.</span>`;
+  }
+  loadAlerts();
+}
+
+/* ---------- measured conditions: NWS airport weather stations ---------- */
+const STN={"Gulfport":"KGPT","Biloxi":"KBIX","Bay St. Louis":"KHSA","Pascagoula":"KPQL","Picayune":"KMJD","Slidell":"KASD","New Orleans":"KMSY",
+  "Mobile":"KMOB","Hattiesburg":"KHBG","McComb":"KMCB","Brookhaven":"KBVQ","Natchez":"KHEZ","Vicksburg":"KVKS","Jackson":"KJAN",
+  "New York":"KNYC","Los Angeles":"KLAX","Chicago":"KORD","Houston":"KIAH","Phoenix":"KPHX","Dallas":"KDFW","San Antonio":"KSAT","Denver":"KDEN","Seattle":"KSEA","San Francisco":"KSFO","Las Vegas":"KLAS","Salt Lake City":"KSLC","Minneapolis":"KMSP","Kansas City":"KMCI","St. Louis":"KSTL","Detroit":"KDTW","Atlanta":"KATL","Miami":"KMIA","Orlando":"KMCO","Tampa":"KTPA","Charlotte":"KCLT","Washington DC":"KDCA","Boston":"KBOS","Philadelphia":"KPHL","Nashville":"KBNA","Memphis":"KMEM","Birmingham":"KBHM","Little Rock":"KLIT","Oklahoma City":"KOKC","Albuquerque":"KABQ","Portland":"KPDX","Shreveport":"KSHV"};
+const STN_NAME={KGPT:"Gulfport-Biloxi Airport",KBIX:"Keesler Air Force Base",KHSA:"Stennis Airport",KPQL:"Pascagoula Airport",KMJD:"Picayune Airport",
+  KASD:"Slidell Airport",KMSY:"New Orleans Airport",KMOB:"Mobile Airport",KHBG:"Hattiesburg Airport",KMCB:"McComb Airport",KBVQ:"Brookhaven Airport",
+  KHEZ:"Natchez Airport",KVKS:"Vicksburg Airport",KJAN:"Jackson Airport"};
+let OBS={};
+const toF=c=>c*9/5+32;
+const toMph=q=>q&&q.value!=null?(/m_s/.test(q.unitCode||"")?q.value*2.23694:q.value/1.609344):null;
+function obsIcon(t){t=(t||"").toLowerCase();return /thunder/.test(t)?"storm":/snow|sleet/.test(t)?"snow":/rain|shower|drizzle/.test(t)?"rain":
+  /fog|mist|haze|smoke/.test(t)?"fog":/overcast|mostly cloudy|^cloudy/.test(t)?"cloud":/partly|few|scattered|broken/.test(t)?"part":/clear|sunny|fair/.test(t)?"sun":null}
+async function loadObs(){
+  const ids=[...new Set([...Object.values(STN),...COUNTIES.map(c=>c.stn)])];
+  await Promise.all(ids.map(async id=>{
+    try{
+      const res=await fetch(`https://api.weather.gov/stations/${id}/observations/latest`,{headers:{Accept:"application/geo+json"}});
+      if(!res.ok) throw 0;
+      const p=(await res.json()).properties;
+      if(!p||p.temperature.value==null) throw 0;
+      const age=(Date.now()-new Date(p.timestamp))/36e5; if(age>3) throw 0;   // ignore readings older than 3 hours
+      const t=toF(p.temperature.value);
+      OBS[id]={temp:t, feels:p.heatIndex&&p.heatIndex.value!=null?toF(p.heatIndex.value):p.windChill&&p.windChill.value!=null?toF(p.windChill.value):t,
+        rh:p.relativeHumidity?p.relativeHumidity.value:null, wind:toMph(p.windSpeed), gust:toMph(p.windGust), dir:p.windDirection?p.windDirection.value:null,
+        dew:p.dewpoint&&p.dewpoint.value!=null?toF(p.dewpoint.value):null, text:p.textDescription||"", time:p.timestamp};
+    }catch(e){ delete OBS[id]; }
+  }));
+  renderCounty(); drawChips();
+}
+const hhmm=t=>new Date(t).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+
+/* ---------- town temperature tags (Open-Meteo + air quality) ---------- */
+const TOWNS=[ // all always shown; tier 2 towns show temperature only when zoomed far out
+  ["Gulfport",30.3674,-89.0928,1,1],["Biloxi",30.3960,-88.8853,1],["Bay St. Louis",30.3088,-89.3300,1,1],["Diamondhead",30.3949,-89.3637,2],
+  ["Waveland",30.2869,-89.3762,2],["Pass Christian",30.3158,-89.2475,2],["Long Beach",30.3505,-89.1528,2],["Ocean Springs",30.4113,-88.8278,2],
+  ["Pascagoula",30.3658,-88.5561,1],["Picayune",30.5255,-89.6798,1],["Slidell",30.2752,-89.7812,1],["New Orleans",29.9511,-90.0715,1],
+  ["Mobile",30.6954,-88.0399,1],["Hattiesburg",31.3271,-89.2903,1],["McComb",31.2438,-90.4532,2],["Brookhaven",31.5791,-90.4407,2],
+  ["Natchez",31.5604,-91.4032,1],["Vicksburg",32.3526,-90.8779,1,1],["Jackson",32.2988,-90.1848,1],["Yazoo City",32.8551,-90.4056,2],
+  ["New York",40.7794,-73.9692,3],["Los Angeles",33.9416,-118.4085,3],["Chicago",41.9786,-87.9048,3],["Houston",29.9844,-95.3414,3],["Phoenix",33.4342,-112.0116,3],["Dallas",32.8998,-97.0403,3],["San Antonio",29.5337,-98.4698,3],["Denver",39.8561,-104.6737,3],["Seattle",47.4502,-122.3088,3],["San Francisco",37.6213,-122.379,3],["Las Vegas",36.084,-115.1537,3],["Salt Lake City",40.7899,-111.9791,3],["Minneapolis",44.8848,-93.2223,3],["Kansas City",39.2976,-94.7139,3],["St. Louis",38.7487,-90.37,3],["Detroit",42.2162,-83.3554,3],["Atlanta",33.6407,-84.4277,3],["Miami",25.7959,-80.287,3],["Orlando",28.4312,-81.3081,3],["Tampa",27.9755,-82.5332,3],["Charlotte",35.214,-80.9431,3],["Washington DC",38.8512,-77.0402,3],["Boston",42.3656,-71.0096,3],["Philadelphia",39.8744,-75.2424,3],["Nashville",36.1263,-86.6774,3],["Memphis",35.0421,-89.9792,3],["Birmingham",33.5629,-86.7535,3],["Little Rock",34.7294,-92.2243,3],["Oklahoma City",35.3931,-97.6007,3],["Albuquerque",35.0402,-106.6091,3],["Portland",45.5898,-122.5951,3],["Shreveport",32.4466,-93.8256,3]];
+let TW=null, chipLayer=null;
+async function loadTowns(){
+  try{
+    const q=new URLSearchParams({latitude:TOWNS.map(t=>t[1]).join(","),longitude:TOWNS.map(t=>t[2]).join(","),timezone:TZ,
+      temperature_unit:"fahrenheit",wind_speed_unit:"mph",current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m"});
+    const j=await (await fetch("https://api.open-meteo.com/v1/forecast?"+q)).json();
+    TW=(Array.isArray(j)?j:[j]).map(x=>x.current);
+    try{const qa=new URLSearchParams({latitude:TOWNS.map(t=>t[1]).join(","),longitude:TOWNS.map(t=>t[2]).join(","),current:"us_aqi",timezone:TZ});
+      const ja=await (await fetch("https://air-quality-api.open-meteo.com/v1/air-quality?"+qa)).json();
+      (Array.isArray(ja)?ja:[ja]).forEach((x,i)=>{if(TW[i]&&x.current) TW[i].aqi=x.current.us_aqi});}catch(e){}
+  }catch(e){TW=null}
+  drawChips();
+}
+const ARROW=d=>["↓","↙","←","↖","↑","↗","→","↘"][Math.round(((d||0)%360)/45)%8]; // arrow points where wind blows TO
+function drawChips(){
+  if(!map||!TW) return;
+  if(chipLayer) map.removeLayer(chipLayer);
+  const z=map.getZoom(), marks=[];
+  const compact=false; // full tag at every zoom level (Marcus, Oct 16)
+  TOWNS.forEach((t,i)=>{ const m=TW[i]; if(!m) return;
+    const id=STN[t[0]], o=id&&OBS[id];
+    const c=o?{temperature_2m:o.temp,apparent_temperature:o.feels,relative_humidity_2m:o.rh??m.relative_humidity_2m,wind_speed_10m:o.wind??m.wind_speed_10m,
+               wind_direction_10m:o.dir??m.wind_direction_10m,weather_code:m.weather_code,aqi:m.aqi,gust:o.gust}:m;
+    let [cd,ci]=WMO(c.weather_code); if(o&&o.text){cd=o.text; ci=obsIcon(o.text)||ci;}
+    const home=t[4]===1, srcLine=o?`Measured at ${STN_NAME[id]||t[0]+" airport station"}, ${hhmm(o.time)}`:"Weather-model estimate (no station here)";
+    const html=compact?`<span class="chip sm${home?" home":""}"><b>${r(c.temperature_2m)}°</b>${t[3]===1?t[0]:""}</span>`
+      :`<span class="chip${home?" home":""}">${I[ci]}<b>${r(c.temperature_2m)}°</b>${t[0]}<span class="wd">${ARROW(c.wind_direction_10m)}${r(c.wind_speed_10m)}</span></span>`;
+    const mk=L.marker([t[1],t[2]],{icon:L.divIcon({className:"chipicon",html,iconSize:[0,0]}),keyboard:false,zIndexOffset:home?1000:0});
+    mk.bindTooltip(`<b>${t[0]}</b><br>${cd}, ${r(c.temperature_2m)}°F (feels ${r(c.apparent_temperature)}°)<br>Wind ${r(c.wind_speed_10m)} mph${c.gust?`, gusts ${r(c.gust)}`:""}<br>Humidity ${r(c.relative_humidity_2m)}%`+(c.aqi!=null?`<br>Air quality ${r(c.aqi)} (${aqiCat(c.aqi)[2]})`:"")+`<br><span style="color:var(--muted);font-size:12px">${srcLine}</span>`,{className:"tt",direction:"top",offset:[0,-12]});
+    marks.push(mk); });
+  chipLayer=L.layerGroup(marks).addTo(map);
+}
+
+/* ---------- map layers: work anywhere in the US, based on what's on screen ---------- */
+let GRID=null, GRIDKEY="", AQ=null, mode="radar", overlay=null, labels=null, wms=null, legendCache={};
+const GN=9;   // 9 x 9 sample points across the visible map
+function viewGrid(){
+  const b=map.getBounds().pad(0.08);
+  const lat0=Math.max(18,b.getSouth()), lat1=Math.min(60,b.getNorth()), lon0=Math.max(-170,b.getWest()), lon1=Math.min(-50,b.getEast());
+  const lats=[...Array(GN)].map((_,i)=>lat0+(lat1-lat0)*i/(GN-1)), lons=[...Array(GN)].map((_,j)=>lon0+(lon1-lon0)*j/(GN-1));
+  return {lat0,lat1,lon0,lon1,lats,lons};
+}
+async function fetchGrid(kind){
+  const g=viewGrid(), key=kind+[g.lat0,g.lat1,g.lon0,g.lon1].map(v=>v.toFixed(1)).join(",")+Math.floor(Date.now()/(30*60e3));
+  if(GRID&&GRIDKEY===key) return;
+  const la=[],lo=[]; g.lats.forEach(a=>g.lons.forEach(o=>{la.push(a.toFixed(2));lo.push(o.toFixed(2))}));
+  try{
+    let vals;
+    if(kind==="aqi"){
+      const q=new URLSearchParams({latitude:la.join(","),longitude:lo.join(","),current:"us_aqi",timezone:TZ});
+      const j=await (await fetch("https://air-quality-api.open-meteo.com/v1/air-quality?"+q)).json();
+      vals={aqi:(Array.isArray(j)?j:[j]).map(x=>x.current?x.current.us_aqi:null)};
+    }else{
+      const q=new URLSearchParams({latitude:la.join(","),longitude:lo.join(","),current:"cloud_cover,cape",timezone:TZ});
+      const j=await (await fetch("https://api.open-meteo.com/v1/forecast?"+q)).json();
+      const arr=Array.isArray(j)?j:[j]; vals={clouds:arr.map(x=>x.current.cloud_cover),storm:arr.map(x=>x.current.cape)};
+    }
+    GRID={...g,...vals}; GRIDKEY=key;
+  }catch(e){GRID=null; GRIDKEY="";}
+}
+async function loadCountyAQ(){
+  try{
+    const q=new URLSearchParams({latitude:COUNTIES.map(c=>c.lat).join(","),longitude:COUNTIES.map(c=>c.lon).join(","),current:"us_aqi",timezone:TZ});
+    const j=await (await fetch("https://air-quality-api.open-meteo.com/v1/air-quality?"+q)).json();
+    AQ={county:(Array.isArray(j)?j:[j]).map(x=>x.current?x.current.us_aqi:null)};
+  }catch(e){AQ=null}
+  const el=document.getElementById("aqiNow"); if(el) el.innerHTML=aqiText(COUNTIES.findIndex(c=>c.id===sel));
+}
+const AQI_CATS=[[50,"#00e400","Good"],[100,"#ffff00","Moderate"],[150,"#ff7e00","Unhealthy for sensitive groups"],[200,"#ff0000","Unhealthy"],[300,"#8f3f97","Very unhealthy"],[1e9,"#7e0023","Hazardous"]];
+const aqiCat=v=>AQI_CATS.find(c=>v<=c[0]);
+function aqiText(k){ if(!AQ||AQ.county[k]==null) return "–"; const v=AQ.county[k]; return `${r(v)} <small>${aqiCat(v)[2].replace("Unhealthy for sensitive groups","Sensitive groups")}</small>`; }
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+
+const NDFD="https://mapservices.weather.noaa.gov/raster/rest/services/NDFD/NDFD_temp/MapServer";
+const LIGHTNING="https://nowcoast.noaa.gov/geoserver/observations/lightning_detection/ows";
+const RAMP=(a,b,c)=>`<span>${a}</span><span class="ramp" style="background:${b}"></span><span>${c}</span>`;
+const LAYERS={
+  radar:{title:"Radar",legend:()=>RAMP("Light","linear-gradient(90deg,#04e9e7,#019ff4,#02fd02,#01c501,#fdf802,#fd9500,#fd0000,#bc0000)","Heavy rain / storms"),
+    note:`NEXRAD radar for the whole US (National Weather Service data via Iowa Environmental Mesonet), last 50 minutes, refreshed every 5 minutes. Faint rings around radar sites, mostly at night, are bugs and dust, not rain.`},
+  temp:{title:"Temperature",note:"National Weather Service temperature map for the current hour (National Digital Forecast Database, about 1.5-mile detail). Town tags show measured temperatures."},
+  clouds:{title:"Cloud cover",grid:"wx",key:"clouds",color:v=>{const c=isDark()?[235,240,242]:[96,110,116];return [...c,Math.round(Math.min(100,v)/100*190)]},label:v=>r(v)+"%",
+    legend:()=>RAMP("Clear",`linear-gradient(90deg,transparent,${isDark()?"#ebf0f2":"#606e74"})`,"Overcast"),note:"Current cloud cover for the area on screen (Open-Meteo weather model, refreshed every 30 minutes and when you move the map)."},
+  aqi:{title:"Air quality",grid:"aqi",key:"aqi",color:v=>[...hex(aqiCat(v)[1]),120],label:v=>r(v),
+    legend:()=>AQI_CATS.slice(0,5).map(c=>`<span class="cat"><i style="background:${c[1]}"></i>${c[2].replace("Unhealthy for sensitive groups","Sensitive groups")}</span>`).join(""),
+    note:"US Air Quality Index, EPA scale, for the area on screen (Open-Meteo air quality model)."},
+  storm:{title:"Storm potential",grid:"wx",key:"storm",color:v=>[...hex("#7a5ad0"),Math.round(Math.min(1,v/2500)*190)],label:v=>v<300?"":v<1000?"Low":v<2500?"Med":"High",
+    legend:()=>RAMP("None","linear-gradient(90deg,transparent,#7a5ad0)","High"),note:"Where the air has energy for thunderstorms (CAPE). It shows where storms could form, not storms happening now."},
+  lightning:{title:"Lightning",note:"Lightning strike density over the last 15 minutes, about 5-mile detail (NOAA nowCOAST). Pair with Radar to see storms."}
+};
+function gridImage(g,vals,colorFn){
+  const W=180,H=180, cv=document.createElement("canvas"); cv.width=W; cv.height=H; const ctx=cv.getContext("2d"), img=ctx.createImageData(W,H);
+  const at=(i,j)=>vals[i*GN+j];
+  for(let py=0;py<H;py++){ const fy=(1-py/(H-1))*(GN-1), i0=Math.min(GN-2,Math.floor(fy)), ty=fy-i0;
+    for(let px=0;px<W;px++){ const fx=px/(W-1)*(GN-1), j0=Math.min(GN-2,Math.floor(fx)), tx=fx-j0;
+      const a=at(i0,j0),b=at(i0,j0+1),c=at(i0+1,j0),d=at(i0+1,j0+1); if([a,b,c,d].some(v=>v==null)) continue;
+      const v=(a*(1-tx)+b*tx)*(1-ty)+(c*(1-tx)+d*tx)*ty, col=colorFn(v), o=(py*W+px)*4;
+      img.data[o]=col[0]; img.data[o+1]=col[1]; img.data[o+2]=col[2]; img.data[o+3]=col[3]; } }
+  ctx.putImageData(img,0,0); return cv.toDataURL();
+}
+function clearOverlay(){ [overlay,labels,wms].forEach(l=>{if(l) map.removeLayer(l)}); overlay=labels=wms=null; }
+function setLegend(html,note){
+  document.getElementById("maplegend").innerHTML=`<div class="lg-title">${LAYERS[mode].title}</div><div class="lg-body">${html}</div>`;
+  document.getElementById("mapnote").innerHTML=note;
+}
+async function arcLegend(){   // NWS service legend (colors and labels for the temperature map)
+  if(legendCache.temp) return legendCache.temp;
+  try{
+    const j=await (await fetch(NDFD+"/legend?f=json")).json();
+    const lyr=(j.layers||[]).find(l=>l.layerId===8)||(j.layers||[]).find(l=>(l.legend||[]).length>3);
+    const items=(lyr&&lyr.legend||[]).filter(x=>x.imageData&&x.label);
+    if(!items.length) throw 0;
+    const pick=items.length>9?items.filter((_,i)=>i%Math.ceil(items.length/9)===0):items;
+    return legendCache.temp=`<span class="swatches">${pick.map(x=>`<span class="sw"><img alt="" src="data:${x.contentType||"image/png"};base64,${x.imageData}">${esc(x.label.replace(/\s*(Deg|deg|degrees)\s*F?/,"°"))}</span>`).join("")}</span>`;
+  }catch(e){ return "Colder (blue) to hotter (red), in °F"; }
+}
+function ndfdImage(){
+  const b=map.getBounds(), sz=map.getSize(), crs=map.options.crs, sw=crs.project(b.getSouthWest()), ne=crs.project(b.getNorthEast());
+  const url=`${NDFD}/export?bbox=${sw.x},${sw.y},${ne.x},${ne.y}&bboxSR=3857&imageSR=3857&size=${sz.x},${sz.y}&layers=show:8&format=png32&transparent=true&f=image&_=${Math.floor(Date.now()/(30*60e3))}`;
+  const ov=L.imageOverlay(url,b,{opacity:.6,zIndex:300});
+  ov.on("error",()=>{document.getElementById("mapnote").textContent="The National Weather Service temperature map didn't load. It tries again when you move the map or in 30 minutes."});
+  return ov;
+}
+let busy=0;
+async function showLayer(m){
+  mode=m; const my=++busy;
+  document.querySelectorAll("[data-layer]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.layer===m));
+  const isRadar=m==="radar";
+  document.getElementById("playwrap").style.display=isRadar?"":"none";
+  if(!map) return;
+  clearOverlay();
+  const D=LAYERS[m];
+  if(isRadar){ layers.forEach((l,k)=>l.setOpacity(k===frame?0.65:0)); if(playing) play(true); else showFrame(frame); setLegend(D.legend(),D.note); return; }
+  clearTimeout(timer); layers.forEach(l=>l.setOpacity(0));
+  document.getElementById("rtime").textContent="Now";
+  if(m==="temp"){ overlay=ndfdImage().addTo(map); setLegend("Loading legend…",D.note); const lg=await arcLegend(); if(my===busy) setLegend(lg,D.note); return; }
+  if(m==="lightning"){
+    wms=L.tileLayer.wms(LIGHTNING,{layers:"lightning_detection",format:"image/png",transparent:true,version:"1.3.0",zIndex:320,opacity:.9}).addTo(map);
+    let errs=0; wms.on("tileerror",()=>{if(++errs===6) document.getElementById("mapnote").textContent="NOAA's lightning map isn't answering right now. It tries again when you move the map.";});
+    setLegend(`<img class="lgimg" alt="Lightning strike density scale" src="${LIGHTNING}?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.3.0&FORMAT=image/png&LAYER=lightning_detection" onerror="this.replaceWith('Fewer strikes (light) to more strikes (dark)')">`,D.note);
+    return;
+  }
+  setLegend(D.legend(),"Loading this layer…");
+  await fetchGrid(D.grid); if(my!==busy) return;
+  if(!GRID||!GRID[D.key]){ document.getElementById("mapnote").textContent="This layer couldn't load. It tries again when you move the map."; return; }
+  const g=GRID, vals=g[D.key];
+  overlay=L.imageOverlay(gridImage(g,vals,D.color),[[g.lat0,g.lon0],[g.lat1,g.lon1]],{opacity:1,zIndex:300}).addTo(map);
+  const marks=[]; for(let i=1;i<GN;i+=2) for(let j=1;j<GN;j+=2){ const v=vals[i*GN+j]; if(v==null) continue; const t=D.label(v); if(!t) continue;
+    marks.push(L.marker([g.lats[i],g.lons[j]],{interactive:false,icon:L.divIcon({className:"gl",html:t,iconSize:[34,14],iconAnchor:[17,7]})})); }
+  labels=L.layerGroup(marks).addTo(map);
+  setLegend(D.legend(),D.note);
+}
+document.getElementById("layers").addEventListener("click",e=>{const b=e.target.closest("[data-layer]"); if(b) showLayer(b.dataset.layer)});
+let moveT=null;
+function onMove(){ clearTimeout(moveT); moveT=setTimeout(()=>{ if(mode!=="radar"&&mode!=="lightning") showLayer(mode); },350); }
+
+/* ---------- radar: NEXRAD mosaic tiles (IEM), animated ---------- */
+const FRAMES=["m50m","m45m","m40m","m35m","m30m","m25m","m20m","m15m","m10m","m05m",""];
+let map=null, base=null, ref=null, layers=[], bad=new Set(), frame=FRAMES.length-1, playing=true, timer=null, stamp=Date.now();
+const empty=document.getElementById("radar-empty");
+const isDark=()=>document.documentElement.dataset.theme?document.documentElement.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+const ESRI="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
+function baseUrl(){return `${ESRI}World_${isDark()?"Dark":"Light"}_Gray_Base/MapServer/tile/{z}/{y}/{x}`}
+function refUrl(){return `${ESRI}World_${isDark()?"Dark":"Light"}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`}
+function view(){const C=COUNTIES.find(c=>c.id===sel); return sel==="warren"?[[C.lat,C.lon],9]:[[30.42,-89.2],9]}
+function initMap(){
+  if(typeof L==="undefined"){empty.style.display="flex";return false}
+  if(map) return true;
+  map=L.map("map",{zoomControl:true,attributionControl:true,scrollWheelZoom:true});
+  base=L.tileLayer(baseUrl(),{maxZoom:12,attribution:'Map: Esri, HERE, Garmin, &copy; OpenStreetMap'}).addTo(map);
+  map.createPane("labels"); map.getPane("labels").style.zIndex=450; map.getPane("labels").style.pointerEvents="none";
+  ref=L.tileLayer(refUrl(),{maxZoom:12,pane:"labels"}).addTo(map);
+  const [c,z]=view(); map.setView(c,z);
+  map.on("zoomend",drawChips); map.on("moveend",onMove);
+  setTimeout(()=>{map.invalidateSize(); const [c2,z2]=view(); map.setView(c2,z2);},250);
+  addEventListener("resize",()=>map.invalidateSize());
+  return true;
+}
+function buildFrames(){
+  layers.forEach(l=>map.removeLayer(l));
+  stamp=Date.now();
+  layers=FRAMES.map((f,i)=>L.tileLayer(`https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913${f?"-"+f:""}/{z}/{x}/{y}.png?t=${Math.floor(stamp/300000)}`,
+    {opacity:i===frame?0.65:0,zIndex:10+i,attribution:'Radar: NWS NEXRAD via <a href="https://mesonet.agron.iastate.edu/">IEM</a>'}).addTo(map));
+  // a frame whose tiles keep failing is skipped; if the latest frame fails, show the error panel
+  bad=new Set();
+  layers.forEach((l,k)=>{let e=0; l.on("tileerror",()=>{if(++e>6){bad.add(k); if(k===layers.length-1) empty.style.display="flex";}});
+    l.on("load",()=>{if(k===layers.length-1) empty.style.display="none"});});
+  showFrame(frame);
+}
+function showFrame(i){
+  layers.forEach((l,k)=>l.setOpacity(k===i?0.65:0));
+  const mins=(FRAMES.length-1-i)*5, t=new Date(stamp-mins*60000);
+  document.getElementById("rtime").textContent=(mins?`${mins} min ago`:"Latest")+" · "+t.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+}
+function tick(){ if(mode!=="radar") return;
+  let n=0; do{frame=(frame+1)%FRAMES.length}while(bad.has(frame)&&++n<FRAMES.length);
+  showFrame(frame); timer=setTimeout(tick,frame===FRAMES.length-1?1800:450)}
+function play(on){playing=on; clearTimeout(timer); const b=document.getElementById("rplay"); b.textContent=on?"Pause":"Play"; b.setAttribute("aria-pressed",on);
+  if(on) timer=setTimeout(tick,450); else {frame=FRAMES.length-1; showFrame(frame);} }
+document.getElementById("rplay").addEventListener("click",()=>play(!playing));
+function radar(){
+  if(!initMap()) return;
+  buildFrames();
+  if(mode!=="radar"){ showLayer(mode); return; }
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) play(false); else if(playing) play(true);
+}
+function recenter(){ if(map){const [c,z]=view(); map.flyTo(c,z,{duration:.6})} }
+document.getElementById("usa").addEventListener("click",()=>{ if(map) map.flyTo([38.5,-96],4,{duration:.8}); });
+document.getElementById("tabs").addEventListener("click",e=>{if(e.target.closest("[data-county]")) setTimeout(recenter,0)});
+
+/* ---------- theme toggle ---------- */
+const root=document.documentElement;
+try{const t=localStorage.getItem("theme"); if(t) root.dataset.theme=t;}catch(e){}
+document.getElementById("theme").addEventListener("click",()=>{
+  const dark=root.dataset.theme?root.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme=dark?"light":"dark"; try{localStorage.setItem("theme",root.dataset.theme)}catch(e){}
+  if(base) base.setUrl(baseUrl()); if(ref) ref.setUrl(refUrl()); if(mode==="clouds") showLayer(mode);
+});
+
+renderAll(); renderAlerts(); load(); radar(); showLayer("radar"); loadCountyAQ(); loadTowns(); loadObs();
+setInterval(loadObs,10*60e3); setInterval(load,15*60e3); setInterval(radar,5*60e3); setInterval(loadCountyAQ,30*60e3); setInterval(loadTowns,30*60e3);
+setInterval(()=>{ if(mode!=="radar") showLayer(mode); },30*60e3);
+</script>
+</body>
+</html>
